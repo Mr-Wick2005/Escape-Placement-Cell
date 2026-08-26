@@ -1,6 +1,7 @@
 {
-  "buildCommand": "cd frontend && yarn build",
+  "buildCommand": "yarn --cwd frontend build",
   "outputDirectory": "frontend/build",
+  "framework": null,
   "rewrites": [
     {
       "source": "/(.*)",

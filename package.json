@@ -1,0 +1,13 @@
+{
+  "name": "escaperoomveda",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "build": "yarn --cwd frontend build",
+    "start": "yarn --cwd frontend start",
+    "test": "yarn --cwd frontend test"
+  }
+}
