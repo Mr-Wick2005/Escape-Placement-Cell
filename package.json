@@ -6,7 +6,7 @@
     "frontend"
   ],
   "scripts": {
-    "build": "yarn --cwd frontend build",
+    "build": "yarn --cwd frontend build && node -e \"require('fs').cpSync('frontend/build', 'build', {recursive: true})\"",
     "start": "yarn --cwd frontend start",
     "test": "yarn --cwd frontend test"
   }
