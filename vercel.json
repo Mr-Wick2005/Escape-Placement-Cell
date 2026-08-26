@@ -1,5 +1,7 @@
 {
-  "outputDirectory": "build",
+  "buildCommand": "cd frontend && yarn install && yarn build",
+  "outputDirectory": "frontend/build",
+  "framework": "create-react-app",
   "rewrites": [
     {
       "source": "/(.*)",

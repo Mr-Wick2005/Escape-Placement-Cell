@@ -6,7 +6,7 @@
     "frontend"
   ],
   "scripts": {
-    "build": "node build.js",
+    "build": "cd frontend && yarn install && yarn build",
     "start": "yarn --cwd frontend start",
     "test": "yarn --cwd frontend test"
   }
