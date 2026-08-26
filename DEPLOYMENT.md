@@ -13,7 +13,7 @@ This guide covers deploying the **Escape Room Placement Cell Game** using **GitH
 
 ## 📋 Prerequisites
 
-1. **GitHub Account**: Code hosted at [https://github.com/Mr-Wick2005/escaperoomveda.git](https://github.com/Mr-Wick2005/escaperoomveda.git)
+1. **GitHub Account**: Code hosted at [https://github.com/Mr-Wick2005/Escape-Placement-Cell.git](https://github.com/Mr-Wick2005/Escape-Placement-Cell.git)
 2. **Supabase Account**: [https://supabase.com](https://supabase.com) (Free tier)
 3. **Vercel Account**: [https://vercel.com](https://vercel.com) or **Netlify**: [https://netlify.com](https://netlify.com)
 
@@ -57,7 +57,7 @@ Go to **Project Settings** → **API** in the Supabase dashboard:
 ### Option A: Deploy on Vercel (Recommended)
 
 1. Go to [Vercel](https://vercel.com) and click **"Add New..."** → **"Project"**.
-2. Connect your GitHub account and import `Mr-Wick2005/escaperoomveda`.
+2. Connect your GitHub account and import `Mr-Wick2005/Escape-Placement-Cell`.
 3. Configure the Project:
    - **Framework Preset**: `Create React App`
    - **Root Directory**: `frontend` *(or leave default root, as `vercel.json` handles monorepos)*
@@ -76,7 +76,7 @@ Go to **Project Settings** → **API** in the Supabase dashboard:
 ### Option B: Deploy on Netlify
 
 1. Go to [Netlify](https://app.netlify.com) and click **"Add new site"** → **"Import an existing project"**.
-2. Choose **GitHub** and select `Mr-Wick2005/escaperoomveda`.
+2. Choose **GitHub** and select `Mr-Wick2005/Escape-Placement-Cell`.
 3. Netlify will automatically detect `netlify.toml`:
    - **Base directory**: `frontend`
    - **Build command**: `yarn build`
@@ -104,8 +104,8 @@ Go to **Project Settings** → **API** in the Supabase dashboard:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Mr-Wick2005/escaperoomveda.git
-cd escaperoomveda/frontend
+git clone https://github.com/Mr-Wick2005/Escape-Placement-Cell.git
+cd Escape-Placement-Cell/frontend
 
 # Install dependencies
 yarn install
