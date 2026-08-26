@@ -1259,7 +1259,9 @@ export const evaluateInterviewAnswers = (answers) => {
 };
 
 export const generateAptitudeAnalysis = (result, questions, answers) => {
-  const { score, correct, totalQuestions } = result;
+  const score = result.score || 0;
+  const totalQuestions = result.totalQuestions || 0;
+  const correct = result.correctCount !== undefined ? result.correctCount : result.correct || 0;
 
   let analysis = {
     strengths: [],
@@ -1283,8 +1285,12 @@ export const generateAptitudeAnalysis = (result, questions, answers) => {
     computerScience: 0,
   };
 
+  let hasCorrectAnswer = questions.some(q => q.correctAnswer !== undefined);
+
   questions.forEach((question, index) => {
-    const isCorrect = answers[index] === question.correctAnswer;
+    const isCorrect = hasCorrectAnswer
+      ? answers[index] === question.correctAnswer
+      : false;
 
     if (
       question.question.toLowerCase().includes("train") ||

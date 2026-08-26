@@ -10,6 +10,7 @@ import {
   evaluateInterviewAnswers,
   generateInterviewAnalysis,
 } from "../../mock/gameData";
+import api from "../../lib/api";
 import {
   User,
   MessageSquare,
@@ -163,23 +164,11 @@ const InterviewPanel = ({ onComplete }) => {
     try {
       setIsGeneratingQuestion(true);
 
-      const response = await fetch("/api/generate-interview-question", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          conversation_history: conversationHistory,
-          question_number: questionNumber,
-          interests: interests,
-        }),
+      const data = await api.interviewQuestion({
+        conversation_history: conversationHistory,
+        question_number: questionNumber,
+        interests: interests,
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
 
       return {
         id: data.id,
@@ -287,25 +276,13 @@ const InterviewPanel = ({ onComplete }) => {
 
     try {
       // Call the AI-powered interview analysis API
-      const response = await fetch("/api/analyze-interview", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          answers: answers,
-          questions: dynamicQuestions.map((q) => ({
-            question: q.question,
-            type: q.type,
-          })),
-        }),
+      const aiAnalysis = await api.interviewAnalyze({
+        answers: answers,
+        questions: dynamicQuestions.map((q) => ({
+          question: q.question,
+          type: q.type,
+        })),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const aiAnalysis = await response.json();
 
       // Get basic evaluation for score/passed status
       const interviewResults = evaluateInterviewAnswers(answers);

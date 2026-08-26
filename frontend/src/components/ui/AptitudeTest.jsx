@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Button } from './button';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
-import { getRandomAptitudeQuestions, evaluateAptitudeTest } from '../../mock/gameData';
-import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import useCountdownTimer from '../../hooks/useCountdownTimer';
 import Timer from './Timer';
+import api from '../../lib/api';
 
 const AptitudeTest = ({ onComplete }) => {
   const [currentPage, setCurrentPage] = useState(0);
@@ -13,8 +13,9 @@ const AptitudeTest = ({ onComplete }) => {
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Use the countdown timer hook for round 1 (10 minutes)
   const {
     timeLeft,
     formattedTime,
@@ -23,19 +24,27 @@ const AptitudeTest = ({ onComplete }) => {
     resetTimer,
     isRunning
   } = useCountdownTimer(600, 'aptitude-timer', () => {
-    // Auto-submit when time runs out
-    if (!showResults) {
+    if (!showResults && !loading) {
       handleSubmit();
     }
   });
 
   useEffect(() => {
-    // Load 10 random questions when component mounts
-    const randomQuestions = getRandomAptitudeQuestions(10);
-    setQuestions(randomQuestions);
+    const loadQuestions = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await api.aptitudeStart();
+        setQuestions(data.questions || []);
+      } catch (err) {
+        setError(err.message || 'Failed to load questions');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadQuestions();
   }, []);
 
-  // Start timer when entering the test interface
   useEffect(() => {
     if (currentPage === 2 && !showResults) {
       startTimer();
@@ -51,15 +60,36 @@ const AptitudeTest = ({ onComplete }) => {
     }));
   };
 
-  const handleSubmit = () => {
-    const answerArray = questions.map((_, index) => answers[index] ?? -1);
-    const testResults = evaluateAptitudeTest(answerArray, questions);
-    setResults(testResults);
-    setShowResults(true);
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError(null);
 
-    setTimeout(() => {
-      onComplete(testResults, questions, answers);
-    }, 3000);
+    try {
+      const answerArray = questions.map((_, index) => answers[index] ?? -1);
+      const testResults = await api.aptitudeSubmit({
+        answers: answerArray,
+      });
+
+      const adaptedResults = {
+        score: testResults.score,
+        correctAnswers: testResults.correctCount,
+        totalQuestions: testResults.totalQuestions,
+        passed: testResults.passed,
+        keyAwarded: testResults.keyAwarded,
+      };
+
+      setResults(adaptedResults);
+      setShowResults(true);
+      stopTimer();
+
+      setTimeout(() => {
+        onComplete(adaptedResults, questions, Object.values(answers));
+      }, 3000);
+    } catch (err) {
+      setError(err.message || 'Failed to submit test');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatTime = (seconds) => {
@@ -96,10 +126,17 @@ const AptitudeTest = ({ onComplete }) => {
           </div>
         </div>
       </div>
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg mb-4">
+          {error}
+        </div>
+      )}
       <Button
         onClick={() => setCurrentPage(1)}
         className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+        disabled={loading || questions.length === 0}
       >
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Start Test
       </Button>
     </div>
@@ -213,7 +250,9 @@ const AptitudeTest = ({ onComplete }) => {
             <Button
               onClick={handleSubmit}
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg"
+              disabled={loading}
             >
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Submit Test
             </Button>
           </div>
@@ -304,7 +343,7 @@ const AptitudeTest = ({ onComplete }) => {
         <CardContent className="p-6">
           <div className="space-y-4">
             <div className="text-center">
-              <div className="text-3xl font-bold text-slate-800">{results.score.toFixed(1)}%</div>
+              <div className="text-3xl font-bold text-slate-800">{results.score}%</div>
               <div className="text-slate-600">Your Score</div>
             </div>
 
@@ -329,6 +368,17 @@ const AptitudeTest = ({ onComplete }) => {
       </Card>
     </div>
   );
+
+  if (loading && questions.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">Loading aptitude questions...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showResults) {
     return renderResults();

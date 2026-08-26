@@ -9,49 +9,33 @@ import Report from "./ui/Report";
 import AIAnalysis from "./ui/AIAnalysis";
 import ComprehensiveAnalysis from "./ui/ComprehensiveAnalysis";
 import {
-  gameProgress,
   generateAptitudeAnalysis,
   generateCodingAnalysis,
   generateInterviewAnalysis,
   generateComprehensiveAnalysis,
 } from "../mock/gameData";
+import { LogOut } from "lucide-react";
 
-const Game = () => {
-  // Load saved game state from localStorage
-  const loadGameState = () => {
-    // Always return null to force starting from classroom on refresh
-    return null;
-  };
-
-  const savedState = loadGameState();
-
-  const [currentRoom, setCurrentRoom] = useState(savedState?.currentRoom || 1);
-  const [keysCollected, setKeysCollected] = useState(
-    savedState?.keysCollected || {
-      keyA: false,
-      keyB: false,
-      keyC: false,
-    }
-  );
-  const [roomsCompleted, setRoomsCompleted] = useState(
-    savedState?.roomsCompleted || {
-      classroom: false,
-      codingLab: false,
-      interviewRoom: false,
-    }
-  );
+const Game = ({ onSignOut }) => {
+  const [currentRoom, setCurrentRoom] = useState(1);
+  const [keysCollected, setKeysCollected] = useState({
+    keyA: false,
+    keyB: false,
+    keyC: false,
+  });
+  const [roomsCompleted, setRoomsCompleted] = useState({
+    classroom: false,
+    codingLab: false,
+    interviewRoom: false,
+  });
   const [showUI, setShowUI] = useState(null);
-  const [gameCompleted, setGameCompleted] = useState(
-    savedState?.gameCompleted || false
-  );
+  const [gameCompleted, setGameCompleted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [scores, setScores] = useState(
-    savedState?.scores || {
-      aptitude: null,
-      coding: null,
-      interview: null,
-    }
-  );
+  const [scores, setScores] = useState({
+    aptitude: null,
+    coding: null,
+    interview: null,
+  });
   const [showReport, setShowReport] = useState(false);
   const [showAIAnalysis, setShowAIAnalysis] = useState(null);
   const [analysisData, setAnalysisData] = useState(null);
@@ -66,23 +50,6 @@ const Game = () => {
   });
   const [testFailed, setTestFailed] = useState(false);
 
-  // Save game state to localStorage whenever it changes
-  useEffect(() => {
-    const gameState = {
-      currentRoom,
-      keysCollected,
-      roomsCompleted,
-      gameCompleted,
-      scores,
-    };
-    try {
-      localStorage.setItem("escapeRoomGameState", JSON.stringify(gameState));
-    } catch (error) {
-      console.error("Error saving game state:", error);
-    }
-  }, [currentRoom, keysCollected, roomsCompleted, gameCompleted, scores]);
-
-  // Check if all keys are collected
   useEffect(() => {
     const allKeysCollected =
       keysCollected.keyA && keysCollected.keyB && keysCollected.keyC;
@@ -96,7 +63,6 @@ const Game = () => {
   const handleRoomComplete = (roomType) => {
     setRoomsCompleted((prev) => ({ ...prev, [roomType]: true }));
 
-    // Award keys based on room completion with enhanced animations
     if (roomType === "classroom") {
       setKeysCollected((prev) => ({ ...prev, keyA: true }));
       setIsTransitioning(true);
@@ -227,6 +193,18 @@ const Game = () => {
         {renderCurrentRoom()}
       </Canvas>
 
+      {/* Logout Button */}
+      <div className="absolute top-4 right-4 z-20">
+        <button
+          onClick={onSignOut}
+          className="flex items-center gap-2 bg-black/60 hover:bg-black/80 text-white px-3 py-2 rounded-lg border border-white/20 backdrop-blur-md transition-colors"
+          title="Sign Out"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="text-sm font-medium">Sign Out</span>
+        </button>
+      </div>
+
       {/* Game UI Overlays */}
       <GameUI
         currentRoom={currentRoom}
@@ -237,7 +215,6 @@ const Game = () => {
         onTestComplete={(testType, result, param1, param2, param3) => {
           setScores((prev) => ({ ...prev, [testType]: result }));
 
-          // Store test data for comprehensive analysis
           setTestData((prev) => ({
             ...prev,
             [testType]: {
@@ -248,18 +225,16 @@ const Game = () => {
             },
           }));
 
-          // Check if player failed (didn't pass the test)
           const failed = !result.passed;
           if (failed) {
             setTestFailed(true);
             return;
           }
           const completedTests =
-            Object.values(scores).filter((score) => score !== null).length + 1; // +1 for current test
+            Object.values(scores).filter((score) => score !== null).length + 1;
           const allCompleted = completedTests === 3;
 
           if (allCompleted) {
-            // Generate comprehensive analysis after a delay
             setTimeout(() => {
               const comprehensiveAnalysis = generateComprehensiveAnalysis(
                 scores,
@@ -269,15 +244,14 @@ const Game = () => {
               setShowComprehensiveAnalysis(true);
             }, 1000);
           } else {
-            // Generate individual AI analysis for passed tests
             setTimeout(() => {
               let analysis = null;
               if (testType === "aptitude") {
-                analysis = generateAptitudeAnalysis(result, param1, param2); // questions, answers
+                analysis = generateAptitudeAnalysis(result, param1, param2);
               } else if (testType === "coding") {
-                analysis = generateCodingAnalysis(result, param2, param1); // language, code
+                analysis = generateCodingAnalysis(result, param2, param1);
               } else if (testType === "interview") {
-                analysis = generateInterviewAnalysis(result, param1); // answers
+                analysis = generateInterviewAnalysis(result, param1);
               }
 
               if (analysis) {
@@ -291,7 +265,7 @@ const Game = () => {
       />
 
       {/* Enhanced Keys Display */}
-      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+      <div className="absolute top-4 right-24 flex flex-col gap-2 z-10">
         <div className="text-white text-sm font-semibold mb-2">
           Keys Collected
         </div>
@@ -437,7 +411,6 @@ const Game = () => {
               </button>
               <button
                 onClick={() => {
-                  localStorage.removeItem("escapeRoomGameState");
                   window.location.reload();
                 }}
                 className="bg-white text-orange-600 px-6 py-3 rounded-xl font-bold hover:bg-orange-50 transition-all transform hover:scale-105 shadow-lg"
@@ -468,9 +441,7 @@ const Game = () => {
           onClose={() => {
             setShowComprehensiveAnalysis(false);
             setComprehensiveAnalysisData(null);
-            // Reset game state if player failed
             if (comprehensiveAnalysisData.completedTests < 3) {
-              localStorage.removeItem("escapeRoomGameState");
               window.location.reload();
             }
           }}
@@ -493,8 +464,6 @@ const Game = () => {
 
             <button
               onClick={() => {
-                // Reset all game state
-                localStorage.removeItem("escapeRoomGameState");
                 setCurrentRoom(1);
                 setKeysCollected({
                   keyA: false,

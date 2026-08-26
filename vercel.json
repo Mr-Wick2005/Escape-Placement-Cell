@@ -1,4 +1,6 @@
 {
+  "buildCommand": "cd frontend && yarn build",
+  "outputDirectory": "frontend/build",
   "rewrites": [
     {
       "source": "/(.*)",
