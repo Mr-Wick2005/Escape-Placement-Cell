@@ -2,6 +2,8 @@
 
 An interactive web-based escape room game designed to simulate the placement process for engineering students. Complete aptitude tests, coding challenges, and HR interviews to "escape" and earn your placement!
 
+Link for the preview : https://escape-placement-cell.vercel.app/
+
 ## ✨ Features
 
 ### 🎯 **Three-Round Challenge System**
