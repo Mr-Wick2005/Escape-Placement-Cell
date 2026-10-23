@@ -14,9 +14,7 @@ import {
   generateInterviewAnalysis,
   generateComprehensiveAnalysis,
 } from "../mock/gameData";
-import { LogOut } from "lucide-react";
-
-const Game = ({ onSignOut }) => {
+const Game = ({ onSignOut } = {}) => {
   const [currentRoom, setCurrentRoom] = useState(1);
   const [keysCollected, setKeysCollected] = useState({
     keyA: false,
@@ -193,17 +191,6 @@ const Game = ({ onSignOut }) => {
         {renderCurrentRoom()}
       </Canvas>
 
-      {/* Logout Button */}
-      <div className="absolute top-4 right-4 z-20">
-        <button
-          onClick={onSignOut}
-          className="flex items-center gap-2 bg-black/60 hover:bg-black/80 text-white px-3 py-2 rounded-lg border border-white/20 backdrop-blur-md transition-colors"
-          title="Sign Out"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="text-sm font-medium">Sign Out</span>
-        </button>
-      </div>
 
       {/* Game UI Overlays */}
       <GameUI
@@ -265,7 +252,7 @@ const Game = ({ onSignOut }) => {
       />
 
       {/* Enhanced Keys Display */}
-      <div className="absolute top-4 right-24 flex flex-col gap-2 z-10">
+      <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
         <div className="text-white text-sm font-semibold mb-2">
           Keys Collected
         </div>
