@@ -1,0 +1,10 @@
+import { Volume2, VolumeX, X } from 'lucide-react';
+import { audioManager } from '../../audio/AudioManager';
+import { useGameStore } from '../../store/gameStore';
+interface Props { open: boolean; onClose: () => void }
+export function SettingsPanel({ open, onClose }: Props): React.ReactNode {
+  const settings = useGameStore((s) => s.settings); const update = useGameStore((s) => s.updateSettings);
+  if (!open) return null;
+  const change = (patch: Partial<typeof settings>) => { update(patch); audioManager.applySettings({ ...settings, ...patch }); };
+  return <div className="modal-backdrop" role="presentation"><section className="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title"><button className="icon-button close" onClick={onClose} aria-label="Close settings"><X /></button><p className="eyebrow">SYSTEM PANEL</p><h2 id="settings-title">Settings</h2><label>Music <output>{Math.round(settings.musicVolume * 100)}%</output><input aria-label="Music volume" type="range" min="0" max="1" step="0.05" value={settings.musicVolume} onChange={(event) => change({ musicVolume: Number(event.target.value) })} /></label><label>SFX <output>{Math.round(settings.sfxVolume * 100)}%</output><input aria-label="Sound effects volume" type="range" min="0" max="1" step="0.05" value={settings.sfxVolume} onChange={(event) => change({ sfxVolume: Number(event.target.value) })} /></label><button className="setting-toggle" onClick={() => change({ muted: !settings.muted })}>{settings.muted ? <VolumeX /> : <Volume2 />} {settings.muted ? 'Sound muted' : 'Sound enabled'}</button><label className="check"><input type="checkbox" checked={settings.reducedMotion} onChange={(event) => change({ reducedMotion: event.target.checked })} /> Reduced motion</label><label className="check"><input type="checkbox" checked={settings.subtitles} onChange={(event) => change({ subtitles: event.target.checked })} /> Subtitles</label></section></div>;
+}
