@@ -860,3 +860,89 @@ h1 { margin: .25rem 0 1rem; font: 600 clamp(2rem, 6vw, 4rem) Orbitron, sans-seri
     fill: #111111 !important;
   }
 }
+
+/* ==========================================================================
+   MOTION, GLITCH, FOCUS ACCESSIBILITY & REDUCED MOTION PASS
+   ========================================================================== */
+
+@keyframes screenFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.game-shell main {
+  animation: screenFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* Wing-specific high contrast focus rings */
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 3px;
+}
+
+.final-gate-screen button:focus-visible,
+.final-gate-screen input:focus-visible {
+  outline-color: var(--gold);
+}
+
+.coding-screen button:focus-visible,
+.coding-screen input:focus-visible {
+  outline-color: var(--green);
+}
+
+.interview-screen button:focus-visible,
+.interview-screen textarea:focus-visible {
+  outline-color: var(--magenta);
+}
+
+/* Sci-fi Glitch Keyframes */
+@keyframes glitchBurst {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.glitch-effect {
+  animation: glitchBurst 0.3s ease-in-out;
+}
+
+/* Reduced Motion Mode Support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .shake-animation, .glitch-effect, .game-shell main {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+body.reduced-motion .shake-animation,
+body.reduced-motion .glitch-effect,
+body.reduced-motion .game-shell main {
+  animation: none !important;
+  transform: none !important;
+}

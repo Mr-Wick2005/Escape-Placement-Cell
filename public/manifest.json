@@ -1,0 +1,16 @@
+{
+  "short_name": "EscapePlacement",
+  "name": "Escape: Placement Cell",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "64x64 192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#05060A",
+  "theme_color": "#05060A",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}

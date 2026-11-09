@@ -267,7 +267,7 @@ export function ReportScreen(): React.ReactNode {
         <footer className="report-footer">
           <ShieldCheck size={16} className="muted" />
           <p>
-            This dossier reflects an automated, deterministic simulation benchmark engineered for campus interview practice. Not an official legal hiring decision or corporate contract.
+            Automated practice evaluation: This dossier reflects a deterministic simulation benchmark engineered for campus interview practice, not an official legal hiring decision or corporate contract.
           </p>
         </footer>
       </div>

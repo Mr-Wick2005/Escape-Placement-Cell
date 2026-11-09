@@ -19,6 +19,7 @@ export function EndingScreen(): React.ReactNode {
   const selectedOption = FINAL_RIDDLE.options.find((opt) => opt.id === riddleChoice) ?? FINAL_RIDDLE.options[0];
 
   const [revealed, setRevealed] = useState(false);
+  const [displayedScore, setDisplayedScore] = useState(0);
 
   useEffect(() => {
     audioManager.play('rankReveal');
@@ -41,6 +42,21 @@ export function EndingScreen(): React.ReactNode {
 
     return () => clearTimeout(timer);
   }, [rank.tier]);
+
+  useEffect(() => {
+    if (!revealed) return;
+    const duration = 1000;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(1, elapsed / duration);
+      setDisplayedScore(Math.floor(progress * totalScore));
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, [revealed, totalScore]);
 
   const handleContinue = () => {
     audioManager.play('uiClick');
@@ -91,7 +107,7 @@ export function EndingScreen(): React.ReactNode {
           <div className="score-summary-pills">
             <div className="score-pill">
               <span className="pill-label">Total Score</span>
-              <strong className="pill-value">{totalScore} <small>/ 1000</small></strong>
+              <strong className="pill-value">{displayedScore} <small>/ 1000</small></strong>
             </div>
             <div className="score-pill">
               <span className="pill-label">Style &amp; Speed</span>

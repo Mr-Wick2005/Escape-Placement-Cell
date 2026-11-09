@@ -1,5 +1,5 @@
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useGameStore } from '../store/gameStore';
 import type { Screen } from '../store/gameTypes';
 import { audioManager } from '../audio/AudioManager';
@@ -93,6 +93,18 @@ function ActiveScreen({ screen }: { screen: Screen }): React.ReactNode {
 
 export default function App() {
   const screen = useGameStore((s) => s.screen);
+  const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
+
+  useEffect(() => {
+    audioManager.playMusicForScreen(screen);
+  }, [screen]);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('reduced-motion', reducedMotion);
+    }
+  }, [reducedMotion]);
+
   return (
     <ErrorBoundary>
       <div className={screen === 'TITLE' ? 'game-shell title-shell' : 'game-shell'}>

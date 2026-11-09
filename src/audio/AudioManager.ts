@@ -1,6 +1,13 @@
 import { Howler } from 'howler';
-import type { GameData } from '../store/gameTypes';
+import type { GameData, Screen } from '../store/gameTypes';
 import { SOUND_MAP, type SoundName } from './soundMap';
+
+interface MusicTrackNodes {
+  oscillators: OscillatorNode[];
+  gain: GainNode;
+  filter: BiquadFilterNode;
+  intervalId?: number;
+}
 
 class AudioManager {
   private unlocked = false;
@@ -13,8 +20,10 @@ class AudioManager {
     voiceEnabled: true,
     subtitles: true,
   };
-  private ambientOsc: OscillatorNode | null = null;
-  private ambientGain: GainNode | null = null;
+
+  private currentTrack: Screen | null = null;
+  private activeMusic: MusicTrackNodes | null = null;
+  private fadingMusic: MusicTrackNodes | null = null;
 
   constructor() {
     if (typeof document !== 'undefined') {
@@ -22,7 +31,9 @@ class AudioManager {
         if (document.hidden) {
           this.pauseAll();
         } else if (this.unlocked && !this.settings.muted) {
-          this.resumeAmbient();
+          if (this.currentTrack) {
+            this.playMusicForScreen(this.currentTrack);
+          }
         }
       });
     }
@@ -32,7 +43,9 @@ class AudioManager {
     this.unlocked = true;
     this.settings = settings;
     try {
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioContextClass && !this.audioCtx) {
         this.audioCtx = new AudioContextClass();
       }
@@ -44,9 +57,6 @@ class AudioManager {
     }
 
     this.applySettings(settings);
-    if (!settings.muted && settings.musicVolume > 0) {
-      this.startAmbient();
-    }
   }
 
   applySettings(settings: GameData['settings']): void {
@@ -54,66 +64,222 @@ class AudioManager {
     Howler.mute(settings.muted);
     Howler.volume(settings.muted ? 0 : settings.sfxVolume);
 
-    if (this.ambientGain && this.audioCtx) {
-      const targetVol = settings.muted ? 0 : settings.musicVolume * 0.12;
-      this.ambientGain.gain.setTargetAtTime(targetVol, this.audioCtx.currentTime, 0.1);
+    if (this.activeMusic && this.audioCtx) {
+      const targetVol = settings.muted ? 0 : settings.musicVolume * 0.15;
+      this.activeMusic.gain.gain.setTargetAtTime(targetVol, this.audioCtx.currentTime, 0.1);
     }
   }
 
-  private startAmbient(): void {
-    if (!this.audioCtx || this.ambientOsc || this.settings.muted) return;
+  /**
+   * Screen-specific music loops with 1.5s crossfade between screens
+   */
+  playMusicForScreen(screen: Screen): void {
+    if (!this.unlocked || this.currentTrack === screen) return;
+    this.currentTrack = screen;
+
+    if (!this.audioCtx) {
+      try {
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (AudioContextClass) this.audioCtx = new AudioContextClass();
+      } catch {
+        return;
+      }
+    }
+
+    const ctx = this.audioCtx;
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
+    }
+
+    const now = ctx.currentTime;
+    const targetVol = this.settings.muted ? 0 : this.settings.musicVolume * 0.15;
+
+    // Crossfade: Fade out currently active music over 1.5 seconds
+    if (this.activeMusic) {
+      if (this.fadingMusic) {
+        this.cleanupTrack(this.fadingMusic);
+      }
+      this.fadingMusic = this.activeMusic;
+      this.activeMusic.gain.gain.setValueAtTime(this.activeMusic.gain.gain.value, now);
+      this.activeMusic.gain.gain.linearRampToValueAtTime(0, now + 1.5);
+      const toClean = this.activeMusic;
+      setTimeout(() => {
+        this.cleanupTrack(toClean);
+        if (this.fadingMusic === toClean) this.fadingMusic = null;
+      }, 1600);
+      this.activeMusic = null;
+    }
+
+    // Build theme for the new screen
+    const newTrack = this.createScreenMusic(screen, ctx, now, targetVol);
+    this.activeMusic = newTrack;
+  }
+
+  private cleanupTrack(track: MusicTrackNodes): void {
     try {
-      const ctx = this.audioCtx;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const filter = ctx.createBiquadFilter();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(55, ctx.currentTime); // Low A1 drone
-
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(140, ctx.currentTime);
-
-      const targetVol = this.settings.muted ? 0 : this.settings.musicVolume * 0.12;
-      gain.gain.setValueAtTime(0, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(targetVol, ctx.currentTime + 2);
-
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start();
-      this.ambientOsc = osc;
-      this.ambientGain = gain;
+      if (track.intervalId) clearInterval(track.intervalId);
+      track.oscillators.forEach((osc) => {
+        try {
+          osc.stop();
+          osc.disconnect();
+        } catch {
+          // Already stopped
+        }
+      });
+      track.gain.disconnect();
+      track.filter.disconnect();
     } catch {
-      // Audio synth optional
+      // Disposed
     }
   }
 
-  private resumeAmbient(): void {
-    if (!this.ambientOsc) {
-      this.startAmbient();
+  private createScreenMusic(
+    screen: Screen,
+    ctx: AudioContext,
+    now: number,
+    targetVol: number
+  ): MusicTrackNodes {
+    const masterGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+    const oscs: OscillatorNode[] = [];
+
+    // Fade in new music over 1.5s
+    masterGain.gain.setValueAtTime(0.0001, now);
+    masterGain.gain.linearRampToValueAtTime(targetVol, now + 1.5);
+
+    filter.connect(masterGain);
+    masterGain.connect(ctx.destination);
+
+    let intervalId: number | undefined;
+
+    switch (screen) {
+      case 'TITLE': {
+        // Dark synth pad: deep minor chord (A1, E2, C3)
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(160, now);
+        [55, 82.4, 130.8].forEach((freq) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.connect(filter);
+          osc.start(now);
+          oscs.push(osc);
+        });
+        break;
+      }
+
+      case 'INTRO':
+      case 'HUB': {
+        // Low pulse ambience: subtle rhythmic breathing sub-bass
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(110, now);
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(65.4, now); // C2
+        osc.connect(filter);
+        osc.start(now);
+        oscs.push(osc);
+        break;
+      }
+
+      case 'APTITUDE': {
+        // Tense puzzle loop: cyan, airy, high crystalline harmonic sines
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(440, now);
+        filter.Q.setValueAtTime(1.5, now);
+        [220, 329.6, 440].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq + idx * 0.5, now);
+          osc.connect(filter);
+          osc.start(now);
+          oscs.push(osc);
+        });
+        break;
+      }
+
+      case 'CODING': {
+        // Cyberpunk beat: rhythmic bass pulse (82Hz / 164Hz)
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(220, now);
+        const bass = ctx.createOscillator();
+        bass.type = 'sawtooth';
+        bass.frequency.setValueAtTime(82.4, now); // E2
+        bass.connect(filter);
+        bass.start(now);
+        oscs.push(bass);
+        break;
+      }
+
+      case 'INTERVIEW': {
+        // Minimal drone + heartbeat tension
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(90, now);
+        const drone = ctx.createOscillator();
+        drone.type = 'sine';
+        drone.frequency.setValueAtTime(55, now);
+        drone.connect(filter);
+        drone.start(now);
+        oscs.push(drone);
+        break;
+      }
+
+      case 'FINAL': {
+        // Epic build: detuned saw oscillators and dramatic swell
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(280, now);
+        [110, 146.8, 164.8, 220].forEach((freq) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.connect(filter);
+          osc.start(now);
+          oscs.push(osc);
+        });
+        break;
+      }
+
+      case 'ENDING':
+      case 'REPORT': {
+        // Serene ambient victory resolution pad (C major / G major)
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(320, now);
+        [130.8, 164.8, 196.0, 261.6].forEach((freq) => {
+          const osc = ctx.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.connect(filter);
+          osc.start(now);
+          oscs.push(osc);
+        });
+        break;
+      }
+
+      default:
+        break;
     }
+
+    return { oscillators: oscs, gain: masterGain, filter, intervalId };
   }
 
   play(name: SoundName): void {
     if (!this.unlocked || this.settings.muted || this.settings.sfxVolume <= 0) return;
 
-    // Check if external file mapped
     const customUrl = SOUND_MAP[name];
-    if (customUrl) {
-      // If external sound exists, Howl can be triggered
-      return;
-    }
+    if (customUrl) return;
 
-    // High quality procedural audio synthesis
     this.synthProceduralSound(name);
   }
 
   private synthProceduralSound(name: SoundName): void {
     if (!this.audioCtx) {
       try {
-        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         if (AudioContextClass) this.audioCtx = new AudioContextClass();
       } catch {
         return;
@@ -240,7 +406,6 @@ class AudioManager {
       case 'fragmentGain':
       case 'confetti':
       case 'rankReveal': {
-        // Glorious arpeggiated triumphant chord
         [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -324,15 +489,13 @@ class AudioManager {
   }
 
   pauseAll(): void {
-    if (this.ambientOsc) {
-      try {
-        this.ambientOsc.stop();
-        this.ambientOsc.disconnect();
-      } catch {
-        // Already stopped
-      }
-      this.ambientOsc = null;
-      this.ambientGain = null;
+    if (this.activeMusic) {
+      this.cleanupTrack(this.activeMusic);
+      this.activeMusic = null;
+    }
+    if (this.fadingMusic) {
+      this.cleanupTrack(this.fadingMusic);
+      this.fadingMusic = null;
     }
     Howler.stop();
   }
