@@ -1,263 +1,177 @@
-# 🎮 Escape Room Placement Cell Game
-
-An interactive web-based escape room game designed to simulate the placement process for engineering students. Complete aptitude tests, coding challenges, and HR interviews to "escape" and earn your placement!
-
-Link for the preview : https://escape-placement-cell.vercel.app/
-
-## ✨ Features
-
-### 🎯 **Three-Round Challenge System**
-
-- **Aptitude Test** - Multiple choice questions with timer
-- **Coding Challenge** - Multi-language programming problems
-- **HR Interview** - Voice-enabled interview with AI feedback
-
-### 🏆 **Comprehensive Scoring & Reporting**
-
-- Real-time score tracking across all rounds
-- Detailed performance report with personalized feedback
-- Overall performance evaluation (Excellent/Good/Average/Needs Improvement)
-
-### 🎤 **Advanced Interview Features**
-
-- Speech-to-text recognition (Chrome/Edge/Safari)
-- Voice input with visual feedback
-- Detailed answer analysis and scoring
-
-### 🎨 **Modern UI/UX**
-
-- Responsive design with Tailwind CSS
-- Beautiful animations and transitions
-- Dark/light theme support
-- Accessible components with Radix UI
-
-### 🛠️ **Technical Highlights**
-
-- 3D graphics integration with Three.js
-- Real-time speech recognition
-- Async database operations
-- Progressive Web App features
-
-## 🚀 Tech Stack
-
-### Frontend
-
-- **React 19** - Modern JavaScript library
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Accessible UI components
-- **React Three Fiber** - 3D graphics in React
-- **React Hook Form + Zod** - Form validation
-- **Axios** - HTTP client
-
-### Backend
-
-- **FastAPI** - High-performance Python web framework
-- **MongoDB** - NoSQL document database
-- **Motor** - Async MongoDB driver
-- **PyJWT** - JSON Web Token authentication
-- **Uvicorn** - ASGI web server
-
-### Development Tools
-
-- **ESLint** - JavaScript linting
-- **Black** - Python code formatting
-- **MyPy** - Type checking
-- **pytest** - Testing framework
-
-## 📋 Prerequisites
-
-- **Node.js** 16+ and npm/yarn
-- **Python** 3.8+
-- **MongoDB** (local or cloud instance)
-
-## 🛠️ Installation & Setup
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/escape-room-placement-cell.git
-cd escape-room-placement-cell
-```
-
-### 2. Backend Setup
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 3. Environment Configuration
-
-Create `.env` file in backend directory:
-
-```env
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=placement_cell_game
-CORS_ORIGINS=http://localhost:3000
-```
-
-### 4. Frontend Setup
-
-```bash
-cd ../frontend
-npm install
-# or
-yarn install
-```
-
-## 🎮 Running the Application
-
-### Start Backend Server
-
-```bash
-cd backend
-uvicorn server:app --reload --host 0.0.0.0 --port 8000
-```
-
-### Start Frontend Development Server
-
-```bash
-cd frontend
-npm start
-# or
-yarn start
-```
-
-### Access the Game
-
-Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## 🎯 How to Play
-
-1. **Start the Game** - Click "Begin Your Journey" on the welcome screen
-2. **Aptitude Round** - Answer 5 multiple-choice questions within 5 minutes
-3. **Coding Round** - Solve a factorial programming problem in your preferred language
-4. **Interview Round** - Answer 7 HR questions (type or use voice input)
-5. **View Results** - Get detailed feedback and performance analysis
-
-## 📁 Project Structure
-
-```
-escape-room-placement-cell/
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ui/           # Reusable UI components
-│   │   │   ├── Game.jsx      # Main game component
-│   │   │   ├── GameUI.jsx    # Game interface
-│   │   │   └── Report.jsx    # Score report component
-│   │   ├── mock/             # Mock data and game logic
-│   │   └── App.js            # Main application
-│   ├── public/
-│   └── package.json
-├── backend/
-│   ├── server.py             # FastAPI application
-│   └── requirements.txt      # Python dependencies
-├── .gitignore
-└── README.md
-```
-
-## 🎨 Game Components
-
-### AptitudeTest.jsx
-
-- Timer-based multiple choice questions
-- Real-time score calculation
-- Passing criteria: 60% or higher
-
-### CodingChallenge.jsx
-
-- Multi-language support (Python, Java, C++, C)
-- Test case validation
-- Factorial algorithm implementation
-
-### InterviewPanel.jsx
-
-- Speech recognition integration
-- Answer quality analysis
-- Keyword-based scoring system
-
-## 🔧 API Endpoints
-
-### Status Management
-
-- `GET /api/status` - Get all status checks
-- `POST /api/status` - Create new status check
-
-### Future Endpoints (Planned)
-
-- `POST /api/auth/login` - User authentication
-- `GET /api/scores` - Get user scores
-- `POST /api/scores` - Save game results
-
-## 🎨 Customization
-
-### Adding New Questions
-
-Edit `frontend/src/mock/gameData.js`:
-
-```javascript
-export const aptitudeQuestions = [
-  {
-    id: 1,
-    question: "Your question here?",
-    options: ["A", "B", "C", "D"],
-    correctAnswer: 0,
-  },
-];
-```
-
-### Modifying Scoring Logic
-
-Update evaluation functions in `gameData.js`:
-
-```javascript
-export const evaluateAptitudeTest = (answers, questions) => {
-  // Custom scoring logic
-};
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **React Community** - For the amazing ecosystem
-- **FastAPI Team** - For the excellent web framework
-- **Tailwind CSS** - For the utility-first CSS approach
-- **Radix UI** - For accessible component primitives
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. Check the [Issues](https://github.com/yourusername/escape-room-placement-cell/issues) page
-2. Create a new issue with detailed description
-3. Include browser console logs for debugging
-
-## 🚀 Future Enhancements
-
-- [ ] User authentication and profiles
-- [ ] Leaderboard system
-- [ ] Multiple difficulty levels
-- [ ] Additional programming challenges
-- [ ] Mobile app version
-- [ ] Multiplayer mode
-- [ ] Admin dashboard for question management
+# 🚪 Escape: Placement Cell — Master Simulation
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-escape--placement--cell.vercel.app-00f0ff?style=for-the-badge&logo=vercel)](https://escape-placement-cell.vercel.app/)
+[![React 19](https://img.shields.io/badge/React-19-61dafb?style=for-the-badge&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Strict%205.9-3178c6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-7.3-646cff?style=for-the-badge&logo=vite)](https://vitejs.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38b2ac?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+[![Playwright](https://img.shields.io/badge/Playwright-E2E%20Passed-2e8555?style=for-the-badge&logo=playwright)](https://playwright.dev/)
+
+> **"Three rounds. One door. Zero second chances."**  
+> An immersive, story-driven cyberpunk escape room game simulating the high-stakes engineering campus placement process. No accounts. No friction. All state persists directly in your browser.
 
 ---
 
-**Happy Gaming! 🎉**
+## 🎮 The Premise & World
 
-Built with ❤️ for engineering students preparing for placements.
+You wake up as **Candidate 404** trapped inside the automated **Nexus Campus Facility**. The recruiter's automated system has sealed all exits. To escape with your career and sanity intact, you must infiltrate and clear three security wings, recover three cryptographic code fragments (`A`, `B`, `C`), and breach **The Final Gate** before campus lockdown triggers.
+
+---
+
+## 🌟 Game Architecture & Levels
+
+```
+                     ┌────────────────────────────────┐
+                     │     LEVEL 0: HUB & BLUEPRINT   │
+                     └───────────────┬────────────────┘
+                                     │
+         ┌───────────────────────────┼───────────────────────────┐
+         ▼                           ▼                           ▼
+┌──────────────────┐       ┌──────────────────┐       ┌──────────────────┐
+│  WING A: VAULT   │       │ WING B: CODE CORE│       │ WING C: INTERVIEW│
+│ Aptitude + Maze  │       │ Monaco + Workers │       │ Web Speech + STAR│
+└────────┬─────────┘       └────────┬─────────┘       └────────┬─────────┘
+         │ (Fragment A)              │ (Fragment B)              │ (Fragment C)
+         └───────────────────────────┼───────────────────────────┘
+                                     ▼
+                     ┌────────────────────────────────┐
+                     │    LEVEL 4: THE FINAL GATE     │
+                     │  3-Lock Cryptographic Breach   │
+                     └───────────────┬────────────────┘
+                                     ▼
+                     ┌────────────────────────────────┐
+                     │    ENDINGS & DOSSIER REPORT    │
+                     │  Offer / Blacklist / Whistle   │
+                     └────────────────────────────────┘
+```
+
+### 🧠 Level 1: Aptitude Vault (Wing A)
+- **Interactive 7×7 Grid Navigation**: Solve dynamic pathfinding obstacles while unlocking blast doors.
+- **6 Diverse Puzzle Formats**:
+  1. Standard Multiple Choice (Speed math, logical deductions)
+  2. Themed Digit/Number Lock inputs
+  3. Drag-and-Drop Sequence Reordering
+  4. Logic Matrices & Grid Deductions
+  5. Multi-Select Checkbox combinations
+  6. Data Sufficiency reasoning
+- **Time Penalty Mechanics**: Lockdown countdown with integrity-based time penalties on incorrect answers.
+
+### ⚡ Level 2: Code Core (Wing B)
+- **Monaco Code Editor Integration**: Full syntax highlighting, error squiggles, and code completion in JavaScript and Python.
+- **Web Worker Sandboxed Execution**: Client-side execution sandbox with a strict 2-second timeout guard to neutralize infinite loops (`while(true) {}`) without freezing the UI.
+- **Memory Leak & Overload Terminal**: Trace simulated memory leaks, diagnose logarithmic complexities, and restore power through the overload console.
+
+### 🎙️ Level 3: Interview Chamber (Wing C)
+- **Web Speech API Recognition**: Real-time microphone audio input with dynamic waveform indicators.
+- **Seamless Text Fallback**: Automatically activates on unsupported browsers, blocked permissions, or mic failure without disrupting gameplay.
+- **STAR Method Rubric Engine**: Answers are evaluated across Situation, Task, Action, and Result indicators with sentiment and confidence tracking.
+- **Dynamic Recruiter Twist**: Questions adapt based on previous choices, culminating in ethical dilemma queries (Q6/Q7).
+
+### 🚪 Level 4: The Final Gate & Endings
+- **Cryptographic Lock Assembly**: Derive three numeric and alphabetical keys from the collected fragments.
+- **3 Narrative Endings**:
+  - 🏆 **The Platinum Offer**: Flawless completion, top integrity score, and compliance.
+  - ⚠️ **The Blacklist**: System lockout due to depleted candidate integrity or timeout.
+  - 🔓 **The Whistleblower**: Exposing the facility's predatory simulation algorithm.
+- **Comprehensive Candidate Dossier**: Printable and exportable report with radar skill distributions, behavioral metrics, and round-by-round analytics.
+
+---
+
+## 🔊 Procedural Audio & Visual Polish
+
+- **100% Procedural Web Audio**: Zero external audio downloads. Sound effects and ambient music drones are synthesized on-the-fly via the Web Audio API and Howler.js for instantaneous playback and zero network overhead.
+- **Audio Controls**: Global volume sliders for Music and SFX, dedicated hotkey (`M`), and optional Text-to-Speech recruiter voiceover toggle.
+- **Motion & Accessibility**:
+  - Ambient particle system (scaled for desktop vs. mobile, automatically paused when the tab is hidden).
+  - Screen glitch burst overlays, fragment fly-in animations, and scramble-decode typography.
+  - Full support for `prefers-reduced-motion` with animated effects cleanly bypassed.
+
+---
+
+## 🛠️ Tech Stack & Engineering Standards
+
+| Technology | Purpose |
+| :--- | :--- |
+| **Vite 7.3** | Lightning-fast build tooling and HMR |
+| **React 19** | Component-driven UI architecture |
+| **TypeScript 5.9 (Strict)** | End-to-end type safety with zero `any` allowance |
+| **Tailwind CSS 3.4** | Cyberpunk theme system with CSS grid shell |
+| **Zustand 5** | Lightweight game state with localStorage auto-sync |
+| **Monaco Editor** | Desktop-grade in-browser code editing |
+| **Web Workers** | Sandboxed JavaScript code execution with timeout protection |
+| **Playwright** | Multi-browser end-to-end test automation |
+| **Vitest** | Blazing-fast unit and regression testing |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18.0.0 or higher
+- npm 9.0.0 or higher
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/Mr-Wick2005/Escape-Placement-Cell.git
+cd Escape-Placement-Cell
+
+# Install dependencies
+npm install
+```
+
+### Development Server
+
+```bash
+npm run dev
+```
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## 🧪 Testing & Verification
+
+The project is protected by automated unit, integration, and E2E suites:
+
+```bash
+# Run code quality linting
+npm run lint
+
+# Run TypeScript type check
+npm run typecheck
+
+# Run Vitest unit & game engine tests (38 tests)
+npm test
+
+# Run Playwright End-to-End tests (Chromium & Mobile Chrome)
+npm run test:e2e
+
+# Run production build & verify asset output
+npm run build
+```
+
+---
+
+## 🌐 Vercel Deployment
+
+This project is configured for **zero-config, 100% seamless deployment on Vercel**:
+
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist` (automatically synced to `build` for backward compatibility)
+- **Framework Preset**: `Vite`
+
+### Deploy via Vercel CLI
+```bash
+npm install -g vercel
+vercel --prod
+```
+
+### Deploy via GitHub Integration
+Any push to the `main` branch will automatically trigger a production build on Vercel. `vercel.json` ensures client-side routing rewrites, security headers, and asset caching are applied automatically.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.

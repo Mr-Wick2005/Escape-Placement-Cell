@@ -44,7 +44,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "cra-template": "1.2.0",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "howler": "^2.2.4",
@@ -69,7 +68,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/sync-build.js",
     "lint": "eslint src --max-warnings=0",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
@@ -89,7 +88,6 @@
     ]
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@eslint/js": "^9.23.0",
     "@playwright/test": "^1.65.0",
     "@testing-library/jest-dom": "^6.9.1",
