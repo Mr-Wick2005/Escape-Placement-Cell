@@ -37,6 +37,8 @@ export const gameDataSchema = z.object({
     subtitles: z.boolean(),
   }),
   riddleChoice: z.string().nullable().default(null),
+  isLockdown: z.boolean().default(false),
+  lockdowns: z.number().int().nonnegative().default(0),
 });
 
 const storage = () => {

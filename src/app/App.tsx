@@ -13,6 +13,8 @@ import { InterviewScreen } from '../screens/InterviewScreen';
 import { FinalGateScreen } from '../screens/FinalGateScreen';
 import { EndingScreen } from '../screens/EndingScreen';
 import { ReportScreen } from '../screens/ReportScreen';
+import { AmbientParticles } from '../components/effects/AmbientParticles';
+import { LockdownOverlay } from '../components/effects/LockdownOverlay';
 
 const TitleDoor = lazy(async () => {
   const module = await import('../components/title/TitleDoor');
@@ -29,6 +31,10 @@ function TitleScreen(): React.ReactNode {
       <h1>{STORY.title.name}</h1>
       <p className="tagline">{STORY.title.tagline}</p>
       <TitleActions />
+      <p className="title-storage-note">No account. Progress is saved only in your browser.</p>
+      <aside className="photosensitivity-warning" role="note">
+        Photosensitivity Warning: Contains flashing lights and glitch effects. Can be toggled off via Reduced Motion in Settings.
+      </aside>
     </main>
   );
 }
@@ -93,7 +99,8 @@ function ActiveScreen({ screen }: { screen: Screen }): React.ReactNode {
 
 export default function App() {
   const screen = useGameStore((s) => s.screen);
-  const reducedMotion = useGameStore((s) => s.settings.reducedMotion);
+  const settings = useGameStore((s) => s.settings);
+  const updateSettings = useGameStore((s) => s.updateSettings);
 
   useEffect(() => {
     audioManager.playMusicForScreen(screen);
@@ -101,12 +108,34 @@ export default function App() {
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
-      document.body.classList.toggle('reduced-motion', reducedMotion);
+      document.body.classList.toggle('reduced-motion', settings.reducedMotion);
     }
-  }, [reducedMotion]);
+  }, [settings.reducedMotion]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'm' || e.key === 'M') {
+        const active = document.activeElement;
+        const isInput =
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active?.getAttribute('contenteditable') === 'true' ||
+          active?.closest('.monaco-editor');
+        if (!isInput) {
+          const nextMuted = !settings.muted;
+          updateSettings({ muted: nextMuted });
+          audioManager.applySettings({ ...settings, muted: nextMuted });
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings, updateSettings]);
 
   return (
     <ErrorBoundary>
+      <AmbientParticles />
+      <LockdownOverlay />
       <div className={screen === 'TITLE' ? 'game-shell title-shell' : 'game-shell'}>
         <ActiveScreen screen={screen} />
       </div>

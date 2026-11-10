@@ -1,0 +1,27 @@
+ESCAPE: PLACEMENT CELL - AUDIO CREDITS & ATTRIBUTIONS
+=====================================================
+
+All audio, music loops, and sound effects (SFX) in this project are
+procedurally synthesized in real-time via the Web Audio API using
+pure mathematical oscillators, biquad filters, stereo panners, and gain envelopes.
+
+Audio System:
+- Centralized singleton AudioManager (Web Audio API / Howler compatible architecture)
+- 0 KB asset footprint: No external MP3/OGG downloads required.
+- Music stems generated dynamically:
+  * Title: dark synth pad (dual detuned sawtooth + lowpass resonance)
+  * Hub: low pulse ambience (sine sub-bass pulse + high drone)
+  * Aptitude Vault: tense puzzle loop (cyan arpeggios, airy bandpass)
+  * Code Core: cyberpunk driving beat (square sub-bass, filter envelope)
+  * Interview Chamber: minimal drone + organic heartbeat pulse
+  * Final Gate: epic brass-lead harmonic build
+  * Ending: triumphal resolution chord progression
+- Sound Effects (SFX): Procedurally synthesized on-demand:
+  * uiClick, uiHover, uiBack
+  * doorOpen, doorLocked, wallShift
+  * answerCorrect, answerWrong, hintUse, fragmentGain
+  * alarmLockdown, keyType, terminalRun, testPass, testFail
+  * powerUp, rankReveal, confetti, timerTickLow
+
+Optional Voice Synthesis:
+- Utilizes the browser's native window.speechSynthesis Web Speech API (offline, zero-telemetry).

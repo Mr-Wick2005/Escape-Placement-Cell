@@ -51,22 +51,25 @@ export const RANKS: Record<RankTier, RankInfo> = {
 
 export function calculateStyleBonus(
   rounds: Record<'aptitude' | 'coding' | 'interview', RoundProgress>,
-  integrity: number
+  integrity: number,
+  lockdowns = 0
 ): number {
   const totalHints = rounds.aptitude.hintsUsed + rounds.coding.hintsUsed + rounds.interview.hintsUsed;
   const hintDeductions = totalHints * BALANCE.penalties.hint;
+  const lockdownDeductions = lockdowns * BALANCE.penalties.lockdownStyle;
   const integrityFactor = Math.floor((integrity / BALANCE.integrity.max) * 20);
   const baseBonus = 30 + integrityFactor;
-  const finalBonus = Math.max(0, Math.min(BALANCE.scoring.styleMax, baseBonus - hintDeductions));
+  const finalBonus = Math.max(0, Math.min(BALANCE.scoring.styleMax, baseBonus - hintDeductions - lockdownDeductions));
   return finalBonus;
 }
 
 export function calculateTotalScore(
   rounds: Record<'aptitude' | 'coding' | 'interview', RoundProgress>,
-  integrity: number
+  integrity: number,
+  lockdowns = 0
 ): { total: number; styleBonus: number } {
   const roundSum = rounds.aptitude.score + rounds.coding.score + rounds.interview.score;
-  const styleBonus = calculateStyleBonus(rounds, integrity);
+  const styleBonus = calculateStyleBonus(rounds, integrity, lockdowns);
   const total = Math.min(BALANCE.scoring.totalMax, Math.max(0, roundSum + styleBonus));
   return { total, styleBonus };
 }
@@ -159,7 +162,7 @@ export function generateAnalysis(
 
   // Evaluate Confidence & Integrity
   if (skills.confidence >= 80) {
-    strengths.push('High composure under scrutiny, avoiding hesitation markers and filler language.');
+    strengths.push('High confidence under scrutiny, avoiding hesitation markers and filler language.');
   } else {
     improvements.push('Vocal assertiveness and elimination of hedging phrases ("I guess", "kind of").');
     actionPlan.push('Practice mock speaking prompts with a 60-second timer to build concise delivery.');
@@ -169,7 +172,7 @@ export function generateAnalysis(
   const defaultStrengths = [
     'Consistent persistence through multi-wing testing protocols.',
     'Adaptable problem-solving across disparate technical domains.',
-    'Quick recovery and calm composure during high-pressure evaluation.',
+    'Quick recovery and calm confidence during high-pressure evaluation.',
   ];
   for (const s of defaultStrengths) {
     if (strengths.length < 3 && !strengths.includes(s)) {

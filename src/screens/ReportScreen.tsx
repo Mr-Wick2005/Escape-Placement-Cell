@@ -201,7 +201,7 @@ export function ReportScreen(): React.ReactNode {
                 { key: 'coding', label: 'Algorithmic Synthesis', val: skills.coding, color: 'var(--green)' },
                 { key: 'communication', label: 'STAR Articulation', val: skills.communication, color: 'var(--magenta)' },
                 { key: 'verbal', label: 'Verbal Precision', val: skills.verbal, color: 'var(--violet)' },
-                { key: 'confidence', label: 'Pressure Composure', val: skills.confidence, color: 'var(--gold)' },
+                { key: 'confidence', label: 'Pressure Confidence', val: skills.confidence, color: 'var(--gold)' },
               ] as const).map((item) => (
                 <div key={item.key} className="skill-row">
                   <div className="skill-label-group">

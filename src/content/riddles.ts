@@ -82,4 +82,12 @@ export const BONUS_RIDDLES: BonusRiddle[] = [
     explanation: 'Fire consumes fuel and burns upon touch.',
     hint: 'Combustion needs oxygen and fuel.',
   },
+  {
+    id: 'riddle-5',
+    question: 'I run but never walk. I have a mouth but never talk. I have a head but never weep. What am I?',
+    answer: 'river',
+    acceptedVariants: ['river', 'a river'],
+    explanation: 'A river runs downhill, has a river mouth, and has a river head.',
+    hint: 'Flowing natural body of water.',
+  },
 ];

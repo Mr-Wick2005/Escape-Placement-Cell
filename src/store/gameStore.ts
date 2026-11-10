@@ -31,10 +31,12 @@ export const createNewGame = (): GameData => ({
     sfxVolume: 0.7,
     muted: false,
     reducedMotion: false,
-    voiceEnabled: true,
+    voiceEnabled: false,
     subtitles: true,
   },
   riddleChoice: null,
+  isLockdown: false,
+  lockdowns: 0,
 });
 
 const transitions: Record<Screen, readonly Screen[]> = {
@@ -61,6 +63,7 @@ type Store = GameData & {
   completeInterview: (score: number, fragment: string) => void;
   completeFinalGate: (choice: string) => void;
   damageIntegrity: (amount: number) => void;
+  clearLockdown: () => void;
   reset: () => void;
 };
 
@@ -108,7 +111,7 @@ export const useGameStore = create<Store>((set, get) => ({
           status: cleared ? ('AVAILABLE' as const) : state.rounds.coding.status,
         },
       };
-      const { total } = calculateTotalScore(updatedRounds, state.integrity);
+      const { total } = calculateTotalScore(updatedRounds, state.integrity, state.lockdowns || 0);
       return {
         fragments: { ...state.fragments, A: cleared ? fragment : null },
         totalScore: total,
@@ -124,7 +127,7 @@ export const useGameStore = create<Store>((set, get) => ({
         coding: { ...state.rounds.coding, score, status: 'CLEARED' as const },
         interview: { ...state.rounds.interview, status: 'AVAILABLE' as const },
       };
-      const { total } = calculateTotalScore(updatedRounds, state.integrity);
+      const { total } = calculateTotalScore(updatedRounds, state.integrity, state.lockdowns || 0);
       return {
         fragments: { ...state.fragments, B: fragment },
         totalScore: total,
@@ -144,7 +147,7 @@ export const useGameStore = create<Store>((set, get) => ({
           status: cleared ? ('CLEARED' as const) : ('FAILED_RETRYABLE' as const),
         },
       };
-      const { total } = calculateTotalScore(updatedRounds, state.integrity);
+      const { total } = calculateTotalScore(updatedRounds, state.integrity, state.lockdowns || 0);
       return {
         fragments: { ...state.fragments, C: cleared ? fragment : null },
         totalScore: total,
@@ -155,7 +158,7 @@ export const useGameStore = create<Store>((set, get) => ({
   },
   completeFinalGate: (choice: string) => {
     set((state) => {
-      const { total } = calculateTotalScore(state.rounds, state.integrity);
+      const { total } = calculateTotalScore(state.rounds, state.integrity, state.lockdowns || 0);
       return {
         riddleChoice: choice,
         totalScore: total,
@@ -165,8 +168,22 @@ export const useGameStore = create<Store>((set, get) => ({
     saveGame(get());
   },
   damageIntegrity: (amount: number) => {
-    set((state) => ({
-      integrity: Math.max(0, Math.min(100, state.integrity - amount)),
+    set((state) => {
+      const nextIntegrity = Math.max(0, Math.min(100, state.integrity - amount));
+      const isLockdown = nextIntegrity === 0;
+      const lockdowns = isLockdown ? (state.lockdowns || 0) + 1 : (state.lockdowns || 0);
+      return {
+        integrity: nextIntegrity,
+        isLockdown: isLockdown ? true : state.isLockdown,
+        lockdowns,
+      };
+    });
+    saveGame(get());
+  },
+  clearLockdown: () => {
+    set(() => ({
+      integrity: BALANCE.integrity.lockdownReset,
+      isLockdown: false,
     }));
     saveGame(get());
   },

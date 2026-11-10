@@ -3,6 +3,8 @@ import { Lock, Unlock, ShieldAlert, BookOpen, ChevronRight, HelpCircle, Sparkles
 import { useGameStore } from '../store/gameStore';
 import { audioManager } from '../audio/AudioManager';
 import { FINAL_RIDDLE, type FinalRiddleOption } from '../content/riddles';
+import { DoorSplitEffect } from '../components/effects/DoorSplitEffect';
+import { RecruiterSubtitles } from '../components/effects/RecruiterSubtitles';
 
 const AVAILABLE_RUNES = ['△', '○', '◇', '✦', '□', '✧', '⬡'];
 
@@ -72,6 +74,7 @@ export function FinalGateScreen(): React.ReactNode {
 
   // Disengage locks validation
   const handleDisengage = () => {
+    if (shaking) return;
     const inputA = lock1.join('');
     const inputB = lock2.join('').toUpperCase();
     const inputC = lock3.join('');
@@ -172,7 +175,10 @@ export function FinalGateScreen(): React.ReactNode {
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleDigitChange(idx, e.target.value)}
-                      className="digit-box"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleDisengage();
+                      }}
+                      className="digit-box themed-digit"
                       aria-label={`Lock 1 Digit ${idx + 1}`}
                     />
                   ))}
@@ -195,7 +201,10 @@ export function FinalGateScreen(): React.ReactNode {
                       maxLength={1}
                       value={letter}
                       onChange={(e) => handleLetterChange(idx, e.target.value)}
-                      className="char-box"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleDisengage();
+                      }}
+                      className="char-box themed-digit uppercase-mono"
                       aria-label={`Lock 2 Letter ${idx + 1}`}
                     />
                   ))}
@@ -259,7 +268,7 @@ export function FinalGateScreen(): React.ReactNode {
                   type="button"
                   className="disengage-locks-btn"
                   onClick={handleDisengage}
-                  disabled={lock1.some((d) => !d) || lock2.some((c) => !c) || lock3.length < 3}
+                  disabled={shaking || lock1.some((d) => !d) || lock2.some((c) => !c) || lock3.length < 3}
                 >
                   <Unlock size={18} /> Disengage Gate Mechanisms
                 </button>
@@ -277,50 +286,58 @@ export function FinalGateScreen(): React.ReactNode {
             </div>
           ) : (
             /* FINAL BOSS MOMENT: Recruiter Final Riddle */
-            <div className="final-riddle-modal">
-              <div className="riddle-badge">
-                <Sparkles size={16} className="gold" />
-                <span>FINAL CONVERGENCE PROTOCOL</span>
-              </div>
-              <h2>{FINAL_RIDDLE.prompt}</h2>
-              <p className="riddle-context">{FINAL_RIDDLE.context}</p>
-
-              <div className="riddle-options-list">
-                {FINAL_RIDDLE.options.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`riddle-option-card ${selectedRiddle?.id === opt.id ? 'selected' : ''}`}
-                    onClick={() => {
-                      audioManager.play('uiClick');
-                      setSelectedRiddle(opt);
-                    }}
-                  >
-                    <div className="opt-title">
-                      <span className="opt-philosophy">{opt.philosophy}</span>
-                      <ChevronRight size={18} />
-                    </div>
-                    <p className="opt-label">{opt.label}</p>
-                  </button>
-                ))}
-              </div>
-
-              {selectedRiddle && (
-                <div className="recruiter-riddle-reply">
-                  <p className="reply-quote">{selectedRiddle.response}</p>
-                  <p className="reply-flavor">{selectedRiddle.endingFlavor}</p>
+            <DoorSplitEffect isOpen={locksUnlocked}>
+              <div className="final-riddle-modal">
+                <div className="riddle-badge">
+                  <Sparkles size={16} className="gold" />
+                  <span>FINAL CONVERGENCE PROTOCOL</span>
                 </div>
-              )}
+                <h2>{FINAL_RIDDLE.prompt}</h2>
+                <p className="riddle-context">{FINAL_RIDDLE.context}</p>
 
-              <button
-                type="button"
-                className="breach-exit-btn"
-                disabled={!selectedRiddle}
-                onClick={handleFinishRiddle}
-              >
-                Breach the Facility Threshold &amp; Complete Drive
-              </button>
-            </div>
+                <RecruiterSubtitles
+                  speaker="Recruiter"
+                  text="The gate is unsealed. Before you step out into the daylight, answer one question: what kept you going?"
+                />
+
+                <div className="riddle-options-list">
+                  {FINAL_RIDDLE.options.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={`riddle-option-card ${selectedRiddle?.id === opt.id ? 'selected' : ''}`}
+                      onClick={() => {
+                        audioManager.play('uiClick');
+                        setSelectedRiddle(opt);
+                      }}
+                    >
+                      <div className="opt-title">
+                        <span className="opt-philosophy">{opt.philosophy}</span>
+                        <ChevronRight size={18} />
+                      </div>
+                      <p className="opt-label">{opt.label}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {selectedRiddle && (
+                  <div className="recruiter-riddle-reply">
+                    <p className="reply-quote">{selectedRiddle.response}</p>
+                    <p className="reply-flavor">{selectedRiddle.endingFlavor}</p>
+                    <RecruiterSubtitles speaker="Recruiter" text={selectedRiddle.response} />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="breach-exit-btn"
+                  disabled={!selectedRiddle}
+                  onClick={handleFinishRiddle}
+                >
+                  Breach the Facility Threshold &amp; Complete Drive
+                </button>
+              </div>
+            </DoorSplitEffect>
           )}
         </div>
       </section>

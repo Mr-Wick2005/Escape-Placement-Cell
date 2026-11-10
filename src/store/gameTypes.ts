@@ -29,4 +29,6 @@ export interface GameData {
     subtitles: boolean;
   };
   riddleChoice: string | null;
+  isLockdown?: boolean;
+  lockdowns?: number;
 }

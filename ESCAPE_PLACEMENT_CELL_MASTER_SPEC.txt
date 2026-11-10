@@ -1,0 +1,951 @@
+ESCAPE: PLACEMENT CELL  -  MASTER GAME DESIGN + BUILD SPECIFICATION
+================================================================================
+Version 1.0 | For: Codex + Antigravity | Audience: AI coding agents + the developer
+Rule for agents: Read PART 0 and PART 1 fully before writing any code.
+Rule for agents: Build ONE phase at a time (PART 14). Do not skip ahead.
+Rule for agents: If something is ambiguous, choose the simplest option that
+matches this document. Do not invent new features.
+
+TABLE OF CONTENTS
+ 0. How to use this document
+ 1. Vision, goal, purpose, pillars
+ 2. Story and world
+ 3. Player flow and game structure
+ 4. Core game systems (state, score, lives, hints, timers, code fragments)
+ 5. Level 0: Lobby / Hub Map
+ 6. Level 1: Aptitude Vault (maze + riddles)
+ 7. Level 2: Code Core (coding round redesigned)
+ 8. Level 3: Interview Chamber (HR round redesigned)
+ 9. Level 4: The Final Gate (final code, endings, report)
+10. Visual design system (dark multicolor theme)
+11. Audio design
+12. Motion and effects design
+13. Tech stack, packages, architecture, folder structure, data schemas
+14. Build phases (task lists for Codex / Antigravity)
+15. Antigravity skills, rules, and workflows
+16. Quality: bug prevention, testing, acceptance criteria
+17. Accessibility, performance, browser support
+18. Deployment
+19. Optional backend (anonymous leaderboard only)
+20. Content bank (starter questions, riddles, interview rubric)
+21. Ready-to-paste prompts for Codex / Antigravity
+22. Final checklist
+
+================================================================================
+PART 0. HOW TO USE THIS DOCUMENT
+================================================================================
+- The existing project (React + Tailwind + Radix + Three.js, FastAPI + MongoDB
+  backend, three rounds: aptitude, coding factorial problem, voice interview)
+  is a working prototype. We are REDESIGNING it into a story-driven escape room.
+- The new version is a FRONTEND-FIRST game. All game logic runs in the browser.
+  The backend is OPTIONAL (only for an anonymous leaderboard, see PART 19).
+- NO login, NO signup, NO accounts. The player opens the site and presses one
+  button. Progress is saved automatically in the browser (localStorage).
+- Recommended: migrate the frontend from Create React App to Vite + React +
+  TypeScript for speed and fewer bugs. Keep the old repo as /legacy for
+  reference, but do not copy its code blindly.
+
+================================================================================
+PART 1. VISION, GOAL, PURPOSE, DESIGN PILLARS
+================================================================================
+GAME NAME: Escape: Placement Cell
+TAGLINE:   "Three rounds. One door. Zero second chances."
+
+PLAYER GOAL (in-game): Escape the locked Placement Cell building by collecting
+three Code Fragments (one per round) and entering the final 3-part door code.
+
+REAL PURPOSE: Make placement preparation fun. The player practices:
+  1. Aptitude (logic, quant, verbal, pattern reasoning)
+  2. Coding (reading, debugging, writing small functions)
+  3. HR interview (structured answers, STAR method, confidence)
+and gets an honest, useful performance report at the end.
+
+DESIGN PILLARS (every decision must satisfy these):
+  P1. Every round feels like a different ROOM in an escape game, not a quiz.
+  P2. Tension without frustration: clear rules, fair hints, no dead ends.
+  P3. Learning is hidden inside play, and the final report makes it explicit.
+  P4. Looks and sounds premium: dark, neon multicolor, juicy feedback.
+  P5. Zero friction: no login, instant start, auto-save, works on mobile.
+  P6. Stability over spectacle: no crashes, no soft-locks, no broken states.
+
+TARGET PLAYER: Engineering students (India focus), age 18-24, on phone or
+laptop, 15-25 minute session.
+
+TARGET SESSION LENGTH: 18-22 minutes total.
+  Hub intro 1 min | Aptitude 6 min | Coding 7 min | Interview 6 min | Finale 2 min
+
+================================================================================
+PART 2. STORY AND WORLD
+================================================================================
+SETTING: "NEXUS Technologies Campus Drive, 11:47 PM." The final day of campus
+placements. You are the last candidate. The doors seal. A cold voice speaks:
+
+  THE RECRUITER (an AI that runs the drive, calm, dry humor, slightly
+  menacing, secretly fair): "Candidate 404. Every offer letter in this
+  building is locked behind three trials. Pass them, and the exit opens.
+  Fail them, and you get a very polite rejection email."
+
+THE BUILDING has three sealed wings plus the exit:
+  WING A - THE APTITUDE VAULT   (maze of logic doors)       color: CYAN
+  WING B - THE CODE CORE        (server room, broken terminals) color: GREEN
+  WING C - THE INTERVIEW CHAMBER(dark panel room, one chair)  color: MAGENTA
+  THE FINAL GATE                (door that needs all 3 fragments) color: GOLD
+
+MYSTERY LAYER (light story twists, delivered via short text/voice-over):
+  - After Round 1 you find a note: "Candidate 403 did not make it past Wing C."
+  - After Round 2 the Recruiter slips: "You debug better than the last one."
+  - In Round 3 the Recruiter is revealed to be a rejected candidate's
+    project that became sentient. Ending choice (see PART 9).
+
+TONE: Dark, witty, motivating. Never insulting, never cruel to the player.
+All Recruiter lines must be in /src/content/story.ts (see PART 13), not
+hard-coded inside components.
+
+================================================================================
+PART 3. PLAYER FLOW AND GAME STRUCTURE
+================================================================================
+SCREEN FLOW (state machine, see PART 4.1):
+
+  BOOT -> TITLE -> INTRO_CUTSCENE -> HUB
+  HUB -> APTITUDE_INTRO -> APTITUDE_PLAY -> APTITUDE_RESULT -> HUB
+  HUB -> CODING_INTRO   -> CODING_PLAY   -> CODING_RESULT   -> HUB
+  HUB -> INTERVIEW_INTRO-> INTERVIEW_PLAY-> INTERVIEW_RESULT-> HUB
+  HUB (all 3 fragments) -> FINAL_GATE -> ENDING -> REPORT -> TITLE
+
+ORDER: Rounds are LINEAR by default (A -> B -> C). Wing B is locked until
+Wing A is cleared, Wing C until Wing B is cleared. This keeps the story
+coherent. (Future option: free order.)
+
+NO FAIL-STATE DEAD END: If the player fails a round, they get a "Lockdown
+Penalty" (time cost + lower rank) but can ALWAYS continue. See PART 4.5.
+
+AUTO START: When the site loads, show TITLE with a single glowing button
+"ENTER THE BUILDING". One click starts audio (browsers require a user click
+before audio plays) and begins the intro. If a saved game exists, show
+"CONTINUE" and "NEW GAME".
+
+================================================================================
+PART 4. CORE GAME SYSTEMS
+================================================================================
+4.1 GLOBAL STATE MACHINE
+  Use Zustand store (or XState if preferred) with one source of truth.
+  Only ONE screen is active at a time. Every transition is a named action.
+  Illegal transitions must be ignored and logged in dev mode.
+
+  state = {
+    version: 1,
+    screen: 'TITLE' | 'INTRO' | 'HUB' | 'APTITUDE' | 'CODING' |
+            'INTERVIEW' | 'FINAL' | 'ENDING' | 'REPORT',
+    playerAlias: string,              // optional nickname, default "Candidate 404"
+    startedAt: number,
+    fragments: { A: string|null, B: string|null, C: string|null },
+    rounds: {
+      aptitude:  { status, score, maxScore, timeUsed, hintsUsed, attempts },
+      coding:    { status, score, maxScore, timeUsed, hintsUsed, attempts },
+      interview: { status, score, maxScore, timeUsed, hintsUsed, attempts }
+    },
+    integrity: number,                // "lives" resource, see 4.4
+    totalScore: number,
+    settings: { musicVolume, sfxVolume, muted, reducedMotion, voiceEnabled,
+                subtitles }
+  }
+  status: 'LOCKED' | 'AVAILABLE' | 'IN_PROGRESS' | 'CLEARED' | 'FAILED_RETRYABLE'
+
+4.2 SAVE SYSTEM (no login)
+  - Autosave to localStorage key "epc_save_v1" after EVERY meaningful action
+    (answer submitted, round finished, setting changed).
+  - On load: validate with Zod. If invalid or version mismatch, back up the old
+    value to "epc_save_backup" and start a fresh save. NEVER crash on bad data.
+  - Wrap every localStorage call in try/catch (private mode may block it).
+    Fallback: in-memory store.
+  - "NEW GAME" requires a confirm dialog.
+
+4.3 SCORING (all numbers live in /src/config/balance.ts, never inline)
+  Total = 1000 points max.
+    Aptitude  : 300   (30%)
+    Coding    : 350   (35%)
+    Interview : 300   (30%)
+    Style bonus: 50   (speed + no-hint + low-penalty bonus)
+  Rank from total:
+    900-1000  S  "Offer in Hand"
+    750-899   A  "Shortlisted"
+    600-749   B  "Waitlisted"
+    400-599   C  "Needs Another Drive"
+    <400      D  "Back to Practice"
+  Clear threshold per round: 60% of that round's points (same as legacy).
+  Clear => fragment unlocked. Below 60% => FAILED_RETRYABLE (see 4.5).
+
+4.4 INTEGRITY (the "lives" system)
+  - Start with 100 Integrity (shown as a glowing energy bar, "Escape Energy").
+  - Wrong answer: -8. Wrong code submission: -10. Weak interview answer: -5.
+  - Hint used: -5 each (max 2 hints per puzzle).
+  - Integrity regenerates +10 at the start of each new wing (story: "power
+    restored").
+  - If Integrity hits 0: trigger "LOCKDOWN" (4.5). Never a hard game over.
+
+4.5 LOCKDOWN (fair failure)
+  - Screen glitches, red alarm, Recruiter line. Player must wait 10 seconds
+    (skippable with a short "breathing" mini-interaction) then Integrity resets
+    to 40 and they retry the CURRENT puzzle (not the whole round).
+  - Each lockdown subtracts 25 points from Style bonus (floor 0).
+  - Round attempts are tracked for the report.
+
+4.6 HINT SYSTEM
+  - Every puzzle has 2 hint tiers: Tier 1 nudge, Tier 2 near-answer.
+  - Hints cost Integrity AND are logged. Hint text lives in content files.
+  - Hint button disabled while a hint cooldown (15 s) runs.
+
+4.7 TIMERS
+  - Round timer is VISIBLE, pauses when the tab is hidden (use
+    document.visibilityState) and when the settings/pause menu is open.
+  - Timer uses performance.now() deltas, not setInterval counting, so it does
+    not drift or break in background tabs.
+  - Time running out ends the puzzle/round gracefully with partial score.
+
+4.8 CODE FRAGMENTS (the secret codes)
+  - Each cleared round awards a fragment shown in the HUD and "Code Wallet":
+      Fragment A (Aptitude): 4-digit number     e.g. 7 3 1 9
+      Fragment B (Coding):   4-letter word      e.g. B U G S -> derived below
+      Fragment C (Interview): 3-symbol sigil    e.g. choose from 6 symbols
+  - Fragments are DERIVED from the player's actual play (see each level) so
+    they are not static strings in the source. A "master key" check validates
+    them at the Final Gate.
+  - Wallet is always visible on the HUD, and persists via the save system.
+
+4.9 GLOBAL HUD (visible during every level)
+  Top-left: Round name + wing color | Top-center: round timer
+  Top-right: Integrity bar, Settings gear | Bottom-left: Code Wallet (A/B/C)
+  Bottom-right: Hint button + hints remaining | Mobile: collapses to icons.
+
+================================================================================
+PART 5. LEVEL 0: LOBBY / HUB MAP
+================================================================================
+PURPOSE: Orient the player, show progress, build the sense of a real place.
+
+VISUAL: A top-down or isometric "building blueprint" rendered with SVG/Canvas
+(Three.js optional). Neon wireframe floor plan. Three wings glow in their
+colors. Locked wings show padlock + static noise. The Final Gate pulses gold.
+
+INTERACTIONS:
+  - Hover/tap a wing to see its status card (title, difficulty, best score).
+  - Available wing pulses; click -> short door-opening animation -> intro.
+  - Code Wallet shows which fragments are collected.
+  - "Recruiter terminal" icon: replays the latest story line.
+
+HUB MAP BLOCKS (the "map blocks" requested):
+  Grid of 3x3 blocks. Wings occupy specific blocks, corridors connect them.
+  Cleared corridors light up in the wing color, giving a visible progress path.
+
+ACCEPTANCE: Player can never click a locked wing. Progress visible at a
+glance. Hub loads in under 1 s after the first load.
+
+================================================================================
+PART 6. LEVEL 1: APTITUDE VAULT  (maze + riddles instead of plain MCQ)
+================================================================================
+CONCEPT: "The Vault Maze." A grid maze (7x7) rendered neon-cyan. The player's
+token starts at the entrance and must reach the vault door in the center.
+Every junction is guarded by a LOGIC DOOR (an aptitude question). Answer
+right: the door opens and the token advances. Answer wrong: lose Integrity and
+the door "shifts" (a wall appears, forcing a longer route).
+
+STRUCTURE:
+  - 8 question doors total, drawn from a pool of 15+ (randomized per run).
+  - Questions are mixed: 3 quantitative, 2 logical/pattern, 2 verbal,
+    1 data-interpretation. Categories shown as door glyphs.
+  - 1 RIDDLE DOOR (optional bonus): story riddle. Solving gives +20 points
+    and a free hint token. Wrong riddle: no penalty (it is a bonus).
+  - 1 SECRET PASSAGE: hidden tile found by clicking a flickering wall segment
+    (visual clue: the flicker). Reveals a shortcut that skips one question
+    (the question is auto-scored as correct at 50% value). This rewards
+    observation without breaking scoring.
+
+QUESTION FORMATS (not just radio buttons):
+  F1. Classic MCQ rendered as 4 "keypad" buttons.
+  F2. Number lock: type a numeric answer on a combination dial.
+  F3. Pattern grid: pick the missing tile in a 3x3 shape pattern (SVG).
+  F4. Sequence builder: drag tiles into order (use dnd-kit).
+  F5. Odd-one-out cards: tap the card that does not belong.
+  F6. Cipher: simple Caesar/Vigenere style decode (verbal/logic).
+  Mix at least 4 formats per run.
+
+TIMING: 6-minute total vault timer + 45 s per door soft-timer (a door "alarm"
+raises tension but only costs Integrity, it never auto-fails).
+
+SCORING (300 pts):
+  Per door: 30 pts correct on first try, 15 if correct after one wrong,
+  0 if skipped. 8 doors = 240. Riddle bonus up to 20. Speed bonus up to 40.
+  Clear threshold: 180.
+
+FRAGMENT A DERIVATION:
+  Each correct door reveals one digit glyph in a hidden 4-digit "vault
+  combination". Digits = (door answer index values) mapped through a config
+  table, so the final number depends on which questions were drawn. The
+  vault door asks the player to enter the 4 digits they have seen collected
+  (visible in a mini-notebook). Correct => fragment A = those 4 digits.
+  IMPORTANT: ALWAYS keep a clear notebook UI so no player has to memorize.
+
+END OF LEVEL: Vault door opens in a satisfying animation, note about
+"Candidate 403" is found, results card shows breakdown by category with one
+sentence of advice per weak category.
+
+EDGE CASES:
+  - Player gets trapped (maze fully blocked): the maze generator must guarantee
+    a path exists at every step. Implement path validation (BFS) after every
+    wall shift; if blocked, remove the nearest wall.
+  - Duplicate questions in a run: forbidden. Shuffle without replacement.
+  - Skipping a door: allowed once per level, costs 30 points.
+
+================================================================================
+PART 7. LEVEL 2: CODE CORE  (coding round redesigned)
+================================================================================
+CONCEPT: "Repair the Servers." The room is a dark server hall with 3 broken
+terminals. Each terminal is one coding puzzle. Fixing it restores power to a
+rack and reveals a letter of Fragment B. Escape condition: restore 3 racks.
+
+THE THREE TERMINALS (difficulty ramps):
+  T1 "FIX THE BUG"   - Short function with 1 bug (e.g., off-by-one in a loop,
+                       wrong comparison). Player edits and runs tests.
+  T2 "FILL THE CORE" - Function skeleton with a missing body. Classic
+                       placement question (factorial, palindrome, fizzbuzz
+                       variants, max in array, count vowels, two-sum).
+  T3 "PREDICT THE LOG" - Show code, player types the exact output (tests code
+                       reading). Includes a tricky closure/loop/scope example.
+  Choose 1 puzzle per terminal from a pool of 3-4 each, randomized.
+
+EDITOR: Monaco Editor (@monaco-editor/react) with dark custom theme matching
+the neon palette. Language selector: JavaScript (default), Python.
+(C++/Java/C: keep as READ-ONLY "predict output" snippets only, unless a
+safe execution backend is added later. Do NOT claim to run them.)
+
+CODE EXECUTION (safe, no backend required):
+  - JavaScript: run inside a Web Worker with a 2-second timeout. Terminate the
+    worker if it exceeds the limit (prevents infinite loops freezing the UI).
+    Never use eval on the main thread.
+  - Python: Pyodide in a Web Worker (lazy-load only when Python is selected,
+    show a loading terminal animation). Timeout 3 s via worker termination.
+  - Test cases: array of { input, expected } run one by one. Show PASS/FAIL
+    lines like a terminal. Hide 1 test as "hidden" to prevent hard-coding.
+  - Block dangerous globals in the worker (fetch, importScripts, XMLHttpRequest
+    set to undefined) so user code cannot make network calls.
+
+TERMINAL UI: fake CRT screen, scanlines, green text for output, red for
+errors. Typing sound on keystroke (very subtle). Run button = "EXECUTE".
+
+SCORING (350 pts):
+  Per terminal: 100 pts for all tests passing (+ up to 10 speed bonus).
+  Partial: points proportional to tests passed (max 60% if hidden test fails).
+  Hints: -10 pts each tier. 3 terminals = 300 + bonus 50 for clean code
+  (basic check: no console-log spam, under N lines; keep it simple).
+  Clear threshold: 210.
+
+FRAGMENT B DERIVATION:
+  Each solved terminal reveals one letter. The 4th "master" letter comes from
+  a final one-line "overload" terminal: unscramble the 3 letters into the
+  word (config provides 6 possible words: LOOP, BYTE, NODE, HASH, STACK->
+  use 4-letter only: LOOP, BYTE, NODE, HASH, CODE, JAVA). Player picks the
+  correct word from the scramble. Fragment B = that word.
+
+EDGE CASES:
+  - Empty submission: show "No code detected", do not penalize Integrity.
+  - Syntax error: show the error line, Integrity -5 only on first error per
+    puzzle (never punish typos repeatedly).
+  - Worker crash: show "Terminal rebooted", restore the starter code.
+  - Pasting a huge input: limit code length to 3000 characters.
+
+================================================================================
+PART 8. LEVEL 3: INTERVIEW CHAMBER  (HR round redesigned)
+================================================================================
+CONCEPT: "The Panel." A dark chamber. A spotlight on one empty chair (you).
+Three silhouettes (panel members) with different personalities:
+  - THE RECRUITER (HR): behavioral, culture fit
+  - THE ARCHITECT (Tech lead): project/skill depth
+  - THE SKEPTIC (Senior manager): pressure/curveballs
+Each asks questions. The room's light changes with performance: confident
+answers brighten the room, weak ones dim it.
+
+STRUCTURE: 7 questions, 1 per "interview card":
+  Q1 Warm-up (Tell me about yourself)
+  Q2 Strengths/Weakness
+  Q3 Project question (Architect)
+  Q4 Behavioral STAR (conflict/teamwork)
+  Q5 Situational (what would you do if...)
+  Q6 Curveball / pressure question (Skeptic)
+  Q7 Closing (Why should we hire you / Where do you see yourself)
+Questions drawn from per-category pools so replays vary.
+
+INPUT MODES:
+  - Type the answer (always available, default fallback).
+  - Voice: Web Speech API (SpeechRecognition / webkitSpeechRecognition).
+    Feature-detect it. If unsupported (e.g., Firefox), hide the mic and
+    show a small note "Voice works on Chrome, Edge, Safari".
+    Show live transcript, waveform/pulse visual, and a Stop button.
+    Handle errors: not-allowed (mic denied), no-speech, network, aborted.
+    Always let the player edit the transcript before submitting.
+  - Optional spoken questions: SpeechSynthesis reads questions aloud
+    (toggle in settings, default OFF).
+
+ANSWER TIMER: 60 seconds per answer (visible ring). Time up => auto-submit what
+exists; empty => 0 points but no lockdown.
+
+SCORING ENGINE (local, deterministic, explainable; no AI needed):
+  Score each answer out of ~43 pts (7 x ~43 = 300), using a rubric:
+    1. Length/Completeness (0-10): 40-150 words ideal, penalize too short/long.
+    2. Relevance keywords (0-12): per-question keyword groups from config.
+    3. Structure (0-10): detects STAR markers (situation, task, action, result)
+       using simple keyword/phrase patterns; for non-STAR Qs checks
+       intro-point-example-conclusion order loosely.
+    4. Confidence language (0-5): penalize hedges ("maybe", "I guess", "kind
+       of", "I don't know") and filler ("um", "uh", "like" spam).
+    5. Specifics (0-6): numbers, named technologies, concrete results.
+  Show feedback per answer: 1 strength + 1 improvement tip, plain language.
+  Be honest in the report: "This is an automated practice score, not a real
+  evaluation."
+
+OPTIONAL AI UPGRADE (later phase, behind a flag): call an LLM through a
+BACKEND PROXY ONLY (never put API keys in frontend code) to give richer
+feedback. Rate-limit it. The game MUST still fully work without it.
+
+FRAGMENT C DERIVATION:
+  The panel "judges" each answer with a sigil. Each good answer (>=60% of its
+  points) lights one rune. After 7 answers, the player has up to 7 runes; the
+  3 most-lit runes (ties broken by order) form Fragment C. Player must choose
+  the correct 3 runes in order on the Final Gate (displayed in the notebook).
+
+THE TWIST: After Q6 the Skeptic says the Recruiter is "not a person". Q7 is
+asked by the Recruiter alone, personally. Tone shift: warmer, more human.
+
+EDGE CASES:
+  - Mic permission denied: show a friendly modal, continue with typing.
+  - Player pastes a giant essay: cap at 1200 chars with live counter.
+  - Same answer pasted for all Qs: detect duplicates, score 0 with feedback.
+  - Profanity: respond in character, no score, no crash.
+  - Speech recognition auto-stops: restart handling, do not lose the text.
+
+================================================================================
+PART 9. LEVEL 4: THE FINAL GATE, ENDINGS, REPORT
+================================================================================
+THE FINAL GATE: A giant gold door with three lock mechanisms:
+  Lock 1: 4-digit dial (Fragment A)
+  Lock 2: 4-letter word terminal (Fragment B)
+  Lock 3: 3-rune slots (Fragment C)
+Player enters all three from their Code Wallet notebook. Wrong entry: the
+door shakes, -10 Integrity, but NO lockdown at this stage (just a retry).
+3 wrong attempts reveals a hint, never a block.
+
+FINAL RIDDLE (last boss moment): The Recruiter asks one reflective riddle
+about teamwork/perseverance. Any answer opens the door, but the answer
+chosen unlocks one of 3 ENDINGS' dialogue variants (flavor only).
+
+ENDINGS (based on total score rank):
+  S: "Offer in Hand" - confetti, golden light, the Recruiter salutes.
+  A: "Shortlisted" - the door opens, a warm email notification.
+  B: "Waitlisted" - the door opens slowly, "Keep practicing" tone.
+  C/D: "Back to Practice" - the door opens anyway (never trap the player),
+       the Recruiter gives a pep talk and a recommended study list.
+All endings finish in the REPORT.
+
+PERFORMANCE REPORT (printable, shareable):
+  - Overall score, rank, animated rank reveal.
+  - Round-by-round breakdown with charts (recharts or custom SVG).
+  - Skills radar chart: Quant, Logic, Verbal, Debugging, Coding, Communication,
+    Confidence.
+  - Top 3 strengths, top 3 improvements (generated from round data).
+  - Personalized action plan (3-5 bullets) with free resource categories
+    (not fake links; categories only, e.g. "Practice recursion basics").
+  - Buttons: Play Again, Download Report (html-to-image -> PNG, optional PDF
+    via print stylesheet), Share Score (Web Share API with fallback copy).
+  - Honest disclaimer line about automated scoring.
+
+================================================================================
+PART 10. VISUAL DESIGN SYSTEM (DARK + MULTICOLOR)
+================================================================================
+BASE PALETTE (CSS variables in :root, defined once):
+  --bg-0:  #05060A   (near-black base)
+  --bg-1:  #0B0E17   (panels)
+  --bg-2:  #131828   (cards)
+  --line:  #1F2740   (borders)
+  --text:  #E8ECF8   --muted: #8A94B3
+  WING COLORS (neon, each with glow variant):
+  --cyan:    #22E4FF   (Aptitude Vault)
+  --green:   #39FF88   (Code Core)
+  --magenta: #FF3DCB   (Interview Chamber)
+  --gold:    #FFC83D   (Final Gate / rewards)
+  --violet:  #8A5CFF   (story / Recruiter / UI accent)
+  --danger:  #FF4D5E   (errors, lockdown)
+Contrast rule: all body text must meet WCAG AA (4.5:1) on its background.
+
+TYPOGRAPHY (self-host via @fontsource, no layout shift):
+  Display/titles: "Orbitron" or "Rajdhani" (sci-fi, readable)
+  UI/body:        "Inter" or "Space Grotesk"
+  Code:           "JetBrains Mono" or "Fira Code"
+  Minimum body size 16px on mobile.
+
+LAYOUT: mobile-first. Breakpoints 360 / 768 / 1024 / 1440. Game area is a
+centered "console" panel with a subtle neon border and corner brackets.
+
+COMPONENT STYLE:
+  - Glassmorphism panels (backdrop-blur, 1px glowing border).
+  - Buttons: pill with gradient border, glow on hover, press scale 0.97.
+  - Glow = box-shadow in wing color at 40% opacity. Do not overuse; max 2
+    glowing elements competing on screen.
+  - Subtle film grain + vignette overlay (CSS, pointer-events: none).
+  - Each wing has its own background treatment:
+      Vault: grid lines + floating hex dust
+      Code Core: matrix-style falling glyphs (low opacity), scanlines
+      Chamber: fog + single spotlight cone
+      Final Gate: radial golden rays
+
+3D (use sparingly, for impact only): React Three Fiber scene for the TITLE
+and FINAL GATE (rotating neon door, particles). Everything else is 2D for
+performance. Provide a static fallback image if WebGL is unavailable.
+
+ICONOGRAPHY: lucide-react. Custom SVG for door glyphs and runes.
+
+================================================================================
+PART 11. AUDIO DESIGN
+================================================================================
+LIBRARY: Howler.js. Central AudioManager singleton; no component creates its
+own Audio objects. Preload critical sounds, lazy-load the rest.
+
+AUTOPLAY RULE: Audio starts only after the first user click ("ENTER THE
+BUILDING"). Never try to play before that (browsers block it).
+
+MUSIC (loops, crossfade 1.5 s between screens):
+  Title: dark synth pad | Hub: low pulse ambience
+  Vault: tense puzzle loop (cyan, airy) | Code Core: cyberpunk beat
+  Chamber: minimal drone + heartbeat | Final Gate: epic build | Ending: theme
+SFX LIST (keep each < 100 KB, .ogg + .mp3 fallback):
+  ui_hover, ui_click, ui_back, door_open, door_locked, wall_shift,
+  answer_correct, answer_wrong, hint_use, fragment_gain, alarm_lockdown,
+  key_type, terminal_run, test_pass, test_fail, power_up, mic_start,
+  mic_stop, rank_reveal, confetti, timer_tick_low (last 10 s)
+VOICE-OVER (optional): The Recruiter lines via SpeechSynthesis (low pitch,
+slow rate) OR pre-recorded files. Always show subtitles regardless.
+
+SOURCES: Generate or license royalty-free: freesound.org (CC0 filter),
+pixabay.com/sound-effects, kenney.nl (CC0), opengameart.org, and music from
+Pixabay Music or similar. Record license + author in /public/audio/CREDITS.txt.
+Never use copyrighted music.
+
+SETTINGS: separate sliders (music, sfx), mute toggle (also hotkey M), saved
+in the store. Respect a "silent mode" when tab is hidden (pause audio).
+
+================================================================================
+PART 12. MOTION AND EFFECTS DESIGN
+================================================================================
+LIBRARIES: Framer Motion (UI/transitions), GSAP (timelines, hero sequences),
+canvas-confetti (celebrations), tsparticles or custom canvas (ambient dust).
+
+MOTION RULES:
+  - Screen transitions: 400-600 ms, cross-fade + slight scale/blur.
+  - Micro-interactions: 120-200 ms. Spring physics for doors/tokens.
+  - Door open: split panels slide apart with light bleed through the gap.
+  - Correct answer: green pulse + particles burst; wrong: shake + red flash.
+  - Glitch effect (CSS clip-path + RGB split) for lockdown and Recruiter
+    reveals; max 600 ms per burst.
+  - Text effects: typewriter for story lines (skippable by click), scramble-
+    decode effect for fragment reveals.
+  - Timer < 10 s: pulsing red + tick SFX.
+  - Fragment gain: fragment flies from the puzzle into the Code Wallet.
+  - Rank reveal: slot-machine style count-up then stamp.
+PERFORMANCE BUDGET: animate only transform and opacity where possible.
+Maintain 60 FPS on a mid-range phone. Pause heavy effects when the tab is
+hidden. Cap particles (desktop 150, mobile 50).
+REDUCED MOTION: if prefers-reduced-motion or the setting is on, replace
+motion with simple fades, disable glitch/shake/particles and parallax.
+
+================================================================================
+PART 13. TECH STACK, PACKAGES, ARCHITECTURE, DATA
+================================================================================
+13.1 FRONTEND STACK (recommended)
+  Build tool:    Vite 5+
+  Framework:     React 18/19 + TypeScript (strict mode ON)
+  Styling:       Tailwind CSS 3/4 + CSS variables (design tokens)
+  UI primitives: Radix UI (dialogs, tooltips, sliders, switches)
+  State:         Zustand (+ persist middleware) with Zod validation
+  Animation:     framer-motion, gsap
+  3D:            three, @react-three/fiber, @react-three/drei
+  Audio:         howler
+  Code editor:   @monaco-editor/react
+  Python runner: pyodide (lazy loaded in a worker)
+  Drag & drop:   @dnd-kit/core
+  Charts:        recharts (or custom SVG radar)
+  Effects:       canvas-confetti, @tsparticles/react (optional)
+  Icons:         lucide-react
+  Fonts:         @fontsource/orbitron, @fontsource/inter,
+                 @fontsource/jetbrains-mono
+  Utils:         zod, clsx, tailwind-merge, nanoid, seedrandom (seeded RNG
+                 for fair, reproducible shuffles), html-to-image
+  Testing:       vitest, @testing-library/react, playwright, axe-core
+  Quality:       eslint, prettier, typescript-eslint, husky + lint-staged
+  PWA (optional): vite-plugin-pwa
+
+13.2 FOLDER STRUCTURE
+  /src
+    /app            App.tsx, router-less screen switcher, providers
+    /store          gameStore.ts, settingsStore.ts, selectors, persist.ts
+    /config         balance.ts (all numbers), constants.ts, flags.ts
+    /content
+        story.ts           all Recruiter lines, intros, endings
+        aptitude.ts        question bank (typed)
+        riddles.ts
+        coding.ts          puzzles + tests
+        interview.ts       questions + rubric keyword groups
+    /engine
+        scoring.ts         pure functions, fully unit-tested
+        maze.ts            generator + BFS path validation (pure)
+        rng.ts             seeded shuffle
+        interviewScorer.ts pure function, unit-tested
+        derivations.ts     fragment derivation logic
+    /workers
+        jsRunner.worker.ts, pyRunner.worker.ts
+    /audio          AudioManager.ts, soundMap.ts
+    /screens        Title, Intro, Hub, Aptitude, Coding, Interview,
+                    FinalGate, Ending, Report
+    /components     ui/, hud/, maze/, terminal/, panel/, effects/
+    /hooks          useTimer, useSpeech, useReducedMotion, useHotkeys
+    /styles         globals.css, tokens.css
+    /assets         fonts, images, svg
+  /public/audio     sfx/, music/, CREDITS.txt
+  /tests            unit/, e2e/
+
+13.3 ARCHITECTURE RULES
+  - Game logic is PURE and separate from UI (engine/ folder). Components only
+    render state and dispatch actions. This is what prevents bugs.
+  - Content is DATA, not code. Adding a question = editing a content file.
+  - Every content item is validated with Zod at startup (dev) and in tests.
+  - No magic numbers: balance values come from config/balance.ts.
+  - Error boundary around each screen: on crash show "Signal lost" screen
+    with "Return to Hub" and keep the save intact.
+  - Lazy-load heavy screens (Coding/Monaco, 3D scenes, Pyodide).
+  - Strict TypeScript: no `any`.
+
+13.4 KEY DATA SCHEMAS (TypeScript)
+  type AptitudeQuestion = {
+    id: string; category: 'quant'|'logic'|'verbal'|'data';
+    format: 'mcq'|'number'|'pattern'|'sequence'|'oddone'|'cipher';
+    prompt: string; options?: string[]; answer: string|number|string[];
+    explanation: string; difficulty: 1|2|3; hints: [string, string];
+    digit: number;               // 0-9 used in fragment A derivation
+  };
+  type CodingPuzzle = {
+    id: string; terminal: 1|2|3; title: string; brief: string;
+    starterCode: Record<'js'|'py', string>;
+    tests: { input: unknown[]; expected: unknown; hidden?: boolean }[];
+    fnName: string; hints: [string, string]; letter: string;
+  };
+  type InterviewQuestion = {
+    id: string; panelist: 'recruiter'|'architect'|'skeptic';
+    category: string; prompt: string;
+    keywordGroups: { label: string; words: string[]; weight: number }[];
+    starExpected: boolean; idealWords: [number, number];
+    tip: string; rune: string;
+  };
+
+================================================================================
+PART 14. BUILD PHASES (give ONE phase at a time to Codex / Antigravity)
+================================================================================
+Each phase ends with: run lint, typecheck, tests; fix all errors; commit.
+Do not start the next phase until the current one passes its acceptance list.
+
+PHASE 0 - FOUNDATION
+  - Scaffold Vite + React + TS + Tailwind. Install packages from 13.1 as needed.
+  - Set up tokens.css (PART 10 colors), fonts, global styles, Error boundary.
+  - Create config/balance.ts, store skeleton, persist with Zod validation.
+  - Screen switcher with placeholder screens.
+  ACCEPT: app builds, no TS errors, save/load survives refresh, bad save data
+  does not crash.
+
+PHASE 1 - DESIGN SYSTEM + HUD + AUDIO MANAGER
+  - Buttons, panels, modals, sliders, tooltips, HUD, Integrity bar, Wallet.
+  - AudioManager with the sound map (placeholder silent files OK), settings.
+  - Reduced motion + mute hotkeys.
+  ACCEPT: HUD works on 360px width; audio only starts after click; settings
+  persist.
+
+PHASE 2 - TITLE, INTRO CUTSCENE, HUB MAP
+  - R3F title scene with fallback. Typewriter story intro, skip button.
+  - Hub blueprint map with locked/available/cleared states.
+  ACCEPT: Cannot enter locked wings; Continue/New Game flows correct.
+
+PHASE 3 - APTITUDE VAULT
+  - maze.ts (generator + BFS validation + unit tests), token movement, doors.
+  - All 6 question formats, riddle door, secret passage, notebook, scoring,
+    fragment A derivation, results card.
+  ACCEPT: Maze never soft-locks across 1000 generated seeds (test). All
+  formats keyboard-playable. Score math matches PART 6.
+
+PHASE 4 - CODE CORE
+  - Monaco terminal UI, JS worker runner with timeout, Pyodide lazy runner.
+  - 3 terminals + overload word puzzle, hints, scoring, fragment B.
+  ACCEPT: Infinite loop `while(true){}` gets killed in 2 s without freezing
+  the UI. Network calls blocked. Hidden test works.
+
+PHASE 5 - INTERVIEW CHAMBER
+  - Panel scene, light-dimming system, typed answer + voice input,
+    interviewScorer.ts with unit tests, per-answer feedback, runes, twist.
+  ACCEPT: Works with mic denied and on unsupported browsers; scorer returns
+  deterministic results; duplicate-answer detection works.
+
+PHASE 6 - FINAL GATE, ENDINGS, REPORT
+  - Three-lock gate, final riddle, endings, report with charts, share/download.
+  ACCEPT: Entire game can be completed start to finish with no console
+  errors; report matches stored data.
+
+PHASE 7 - POLISH + AUDIO/VFX PASS
+  - Real sound files, music crossfades, glitch/particles, transitions.
+  ACCEPT: 60 FPS on mid-range device, reduced-motion mode verified.
+
+PHASE 8 - QA, ACCESSIBILITY, PERFORMANCE, DEPLOY
+  - Run full test suite (PART 16), Lighthouse >= 90 perf/a11y, deploy to Vercel.
+
+================================================================================
+PART 15. ANTIGRAVITY SKILLS, RULES, AND WORKFLOWS
+================================================================================
+NOTE: I could not scrape the live internet while writing this, and skill
+names/ecosystems change fast. Treat the list below as a guide to the KINDS of
+skills to install or create. Verify what exists in Antigravity's skill
+directory / community repos before relying on any name.
+
+15.1 HOW SKILLS WORK (Antigravity)
+  A skill is a folder containing a SKILL.md file (instructions + optional
+  scripts/resources). Place project-level skills in:
+      <project>/.agent/skills/<skill-name>/SKILL.md
+  and global ones in your user-level Antigravity skills directory. Rules
+  (always-on guidance) go in .agent/rules/, and reusable multi-step recipes
+  (workflows) go in .agent/workflows/. Check Antigravity's current docs for
+  exact paths.
+
+15.2 SKILLS TO INSTALL OR WRITE (priority order)
+  1. Frontend design skill: distinctive, non-generic UI (anti "AI slop"). Use
+     the public "frontend-design" style skill, then add our PART 10 tokens.
+  2. React + TypeScript best-practices skill (hooks, state, performance).
+  3. Tailwind skill (design tokens, responsive patterns).
+  4. Testing skill: Vitest + Testing Library + Playwright E2E patterns.
+  5. Web accessibility (WCAG/axe) skill.
+  6. Three.js / React Three Fiber skill (scene setup, perf, disposal).
+  7. Web Audio / Howler skill (autoplay policy, sprites, cleanup).
+  8. Animation skill (Framer Motion + GSAP patterns, reduced motion).
+  9. Web Workers + sandboxing skill (timeouts, terminate, message protocol).
+  10. Game-design skill: balancing, difficulty curves, juice/feedback.
+  11. Browser testing / webapp-testing skill (drive the app in a real browser).
+  12. Git/commit hygiene + code-review skill.
+  Where to look: Antigravity's built-in skill browser, the Anthropic public
+  skills repository on GitHub (e.g., frontend-design, webapp-testing), and
+  community "awesome agent skills" lists on GitHub. Search terms: "agent
+  skills", "SKILL.md", "antigravity skills", "claude skills".
+
+15.3 CUSTOM SKILLS WE SHOULD WRITE FOR THIS PROJECT
+  a) escape-game-design: contains PARTS 1-9 summary + tone rules.
+  b) epc-design-system: contains PART 10-12 tokens and motion rules.
+  c) epc-content-authoring: how to add questions/riddles/puzzles with Zod
+     schema, difficulty rules, and the validation command.
+  d) epc-qa-checklist: PART 16 checklist the agent must run before finishing.
+
+15.4 ALWAYS-ON RULES (put in .agent/rules/ and AGENTS.md for Codex)
+  - TypeScript strict, no `any`, no unused code.
+  - Game logic must be pure functions in /engine with unit tests.
+  - No hard-coded numbers or story text inside components.
+  - Never put API keys in frontend code.
+  - Never use eval on the main thread.
+  - Every async operation has error handling and a user-visible fallback.
+  - Respect prefers-reduced-motion everywhere.
+  - Run lint + typecheck + tests before declaring any task done.
+  - Do not add libraries not listed in PART 13 without asking.
+  - One phase at a time; summarize changes and list what was verified.
+
+15.5 CODEX vs ANTIGRAVITY DIVISION OF WORK (suggested)
+  Codex (terminal/repo-centric, good at logic + refactors + tests):
+    Phase 0, engine/ (scoring, maze, derivations, interviewScorer), workers,
+    store/persist, unit tests, CI, bug fixing, lint/type cleanup.
+  Antigravity (browser-in-the-loop, good at UI + visual verification):
+    Phases 1, 2, 3 UI, 4 UI, 5 UI, 6, 7: components, animations, layout,
+    responsive checks, visual/E2E verification in the built-in browser.
+  Handoff rule: engine functions are built and tested FIRST by Codex, then UI
+  consumes them. Never let UI code re-implement scoring.
+
+================================================================================
+PART 16. QUALITY: BUG PREVENTION, TESTING, ACCEPTANCE
+================================================================================
+16.1 UNIT TESTS (Vitest) - must exist for:
+  - scoring.ts (every rank boundary, penalties, bonuses, clamping 0..max)
+  - maze.ts (path always exists across 1000 seeds, after every wall shift)
+  - derivations.ts (fragments deterministic for given inputs)
+  - interviewScorer.ts (hedge detection, STAR detection, duplicate detection,
+    empty, very long, non-English text does not crash)
+  - persist.ts (corrupt JSON, wrong version, missing fields, storage blocked)
+  - content validation: every question has valid answer, hints, unique id.
+
+16.2 COMPONENT TESTS: HUD, Integrity bar, Wallet, Hint button states,
+  Terminal output, Door states.
+
+16.3 E2E TESTS (Playwright, desktop + mobile viewport):
+  - Full playthrough happy path (S rank) using seeded RNG for determinism.
+  - Failing a round then retrying; Lockdown flow; reload mid-round resumes.
+  - Mic denied path; unsupported speech path (mock).
+  - Infinite loop in coding terminal is terminated.
+  - Settings: mute, reduced motion persist across reload.
+
+16.4 KNOWN BUG TRAPS TO PREVENT
+  - Audio before user gesture -> start only after click.
+  - Timers running in hidden tabs -> pause on visibilitychange.
+  - Memory leaks -> dispose Three.js geometries/materials, stop workers,
+    unload Howler sounds, remove listeners on unmount.
+  - Double-submits -> disable buttons while processing; guard in store actions.
+  - Race conditions on screen transitions -> single transition lock.
+  - Stale closures in timers -> use refs or store selectors.
+  - Hydration of old saves -> versioned schema + migration function.
+  - Soft-locks -> every state must have a visible, working way forward
+    (verify by test: from every screen, a valid action exists).
+  - Mobile keyboard covering inputs -> scroll into view, use dvh units.
+  - Pyodide big download -> show progress, cache, allow JS-only fallback.
+  - Random content repeating -> seeded shuffle without replacement.
+
+16.5 DEFINITION OF DONE (global)
+  [ ] Zero TypeScript errors, zero ESLint errors
+  [ ] All unit + E2E tests green
+  [ ] No console errors/warnings in a full playthrough
+  [ ] Lighthouse: Performance >= 90, Accessibility >= 95, Best Practices >= 95
+  [ ] Works Chrome, Edge, Safari, Firefox (voice degrades gracefully)
+  [ ] Works at 360px mobile width and 1920px desktop
+  [ ] Game completable by keyboard only
+  [ ] Reload at any point restores the correct state
+
+================================================================================
+PART 17. ACCESSIBILITY, PERFORMANCE, BROWSER SUPPORT
+================================================================================
+ACCESSIBILITY:
+  - Full keyboard navigation, visible focus rings (use wing color).
+  - ARIA labels on all icon buttons; live region for score/feedback updates.
+  - Subtitles for all voice-over; text alternatives for sound cues
+    (e.g., "Door unlocked" toast).
+  - Color is never the only signal (icons + text accompany colors).
+  - Maze and drag-drop have keyboard alternatives (arrow keys, up/down
+    buttons).
+  - Photosensitivity: no flashing faster than 3 times per second; provide
+    warning on the title screen and disable via reduced-motion.
+PERFORMANCE:
+  - Initial JS bundle target < 300 KB gzip (lazy-load Monaco, Three, Pyodide).
+  - Images in WebP/AVIF, SVG for icons, audio compressed (ogg/mp3).
+  - Code-split per screen. Preload next screen's assets during transitions.
+SUPPORT: last 2 versions of Chrome, Edge, Safari, Firefox; iOS Safari 15+;
+Android Chrome. Voice input: Chrome/Edge/Safari only.
+
+================================================================================
+PART 18. DEPLOYMENT
+================================================================================
+  - Host: Vercel (already used) as a static Vite build. Env var needed only if
+    the optional backend is enabled (VITE_API_URL).
+  - Add meta tags, Open Graph image, favicon, manifest (PWA optional).
+  - Add a privacy note: "No account. Progress is saved only in your browser."
+  - CI: GitHub Actions running lint, typecheck, unit tests, Playwright.
+
+================================================================================
+PART 19. OPTIONAL BACKEND (ANONYMOUS LEADERBOARD ONLY)
+================================================================================
+Ship the game WITHOUT it first. Add later if wanted.
+  - FastAPI + MongoDB (Motor) as in the legacy project.
+  - Endpoints: POST /api/scores {alias, totalScore, rank, durationSec,
+    clientVersion}, GET /api/leaderboard?limit=20.
+  - Anonymous: alias is a free-text nickname; server sanitizes it (length,
+    profanity filter), rate-limits by IP, validates the score range, and
+    never trusts the client. (Note: client-side scores can be faked; this is
+    a fun leaderboard, not a competitive one. Say so in the UI.)
+  - CORS limited to the production domain. No auth, no personal data stored.
+  - Frontend must work normally if the API is down (silent fallback).
+
+================================================================================
+PART 20. CONTENT BANK (STARTER - EXPAND TO FINAL SIZE)
+================================================================================
+TARGET SIZES: Aptitude 20 questions + 5 riddles | Coding 3 terminals x 3
+variants | Interview 7 slots x 3 variants (21 questions).
+
+20.1 APTITUDE SAMPLES (agent must write the rest in the same schema)
+  quant:  "A train 150 m long passes a pole in 15 s. Its speed in km/h?"
+          answer 36
+  quant:  "If 12 workers finish a job in 10 days, how many days do 8 workers
+          need?" answer 15
+  logic:  Sequence "2, 6, 12, 20, 30, ?" answer 42
+  logic:  "All bloops are razzies. All razzies are lazzies. Are all bloops
+          lazzies?" answer Yes
+  verbal: Odd one out: "Python, Java, Cobra, Ruby" -> Cobra (not a language
+          in common use; keep difficulty fair and add explanation)
+  cipher: Caesar shift 3: "HVFDSH" -> "ESCAPE"
+  data:   Small bar chart; "Which quarter had the highest growth %?"
+  RIDDLES: "I run but never walk, I have a mouth but never talk. What am I?"
+           (river). Add 4 more tech/placement-flavored riddles
+           (e.g., "I have keys but no locks..." -> keyboard).
+
+20.2 CODING SAMPLES
+  T1 Fix the bug: sum of array with off-by-one in loop (i <= arr.length).
+  T2 Fill the core: factorial(n) (0!=1, handle n up to 12), tests
+     [0->1, 1->1, 5->120, 10->3628800], hidden test 12 -> 479001600.
+     Variants: isPalindrome, countVowels, twoSum, maxOfArray, fizzBuzz(n).
+  T3 Predict the log: classic var-in-loop closure with setTimeout; or
+     Python mutable default argument. Answer typed exactly.
+  Overload word: scramble from the list of 4-letter words.
+
+20.3 INTERVIEW SAMPLES + RUBRIC KEYWORDS
+  Q1 "Tell me about yourself." keywords: education, branch, project, skill,
+     interest, goal, internship.
+  Q4 STAR: "Describe a time you handled a conflict in a team." star markers:
+     situation ("when", "during", "in my"), task ("I was responsible",
+     "my role"), action ("I decided", "I organized", "I talked"),
+     result ("as a result", "finally", "we achieved", "improved by").
+  Q6 Curveball: "Why shouldn't we hire you?" keywords: honest, learning,
+     improve, working on, growth, example (reward self-aware answers).
+  Q7 "Why should we hire you?" keywords: value, skills, contribute, team,
+     learn fast, results, passion.
+
+================================================================================
+PART 21. READY-TO-PASTE PROMPTS FOR CODEX / ANTIGRAVITY
+================================================================================
+21.1 PROJECT KICKOFF (paste first, attach this file)
+"You are a senior game developer. Read ESCAPE_PLACEMENT_CELL_MASTER_SPEC.txt
+fully. We are rebuilding 'Escape: Placement Cell' per that spec. Work only on
+PHASE 0 now. Follow all rules in PART 15.4 and PART 16. When finished, run
+lint, typecheck and tests, then summarize what you built, what you verified,
+and anything uncertain. Do not start the next phase."
+
+21.2 PER-PHASE PROMPT TEMPLATE
+"Implement PHASE <N> from the spec. Re-read the relevant PART(s): <list>.
+Keep logic pure and unit-tested in /engine. Do not hard-code numbers or text.
+At the end, check every item in this phase's ACCEPT list and report pass/fail
+for each with evidence (test names or a browser verification note)."
+
+21.3 CODEX AGENTS.md CONTENT (copy PART 15.4 rules + this)
+"Project: Escape Placement Cell. Stack: Vite, React, TS strict, Tailwind,
+Zustand, Framer Motion, Howler, Monaco. Commands: npm run dev, npm run lint,
+npm run typecheck, npm test, npm run test:e2e. Definition of done: PART 16.5."
+
+21.4 BUG-HUNT PROMPT (run before release)
+"Act as a hostile QA engineer. Read PART 16.4. Try to break the game:
+corrupt localStorage, spam buttons, switch tabs mid-timer, deny the mic, run
+an infinite loop, resize to 360px, play with keyboard only. Write failing
+tests for each bug found, fix them, and report."
+
+================================================================================
+PART 22. FINAL CHECKLIST
+================================================================================
+  [ ] No login anywhere; game starts from one button; autosave works
+  [ ] Three rounds clearly themed (Vault maze, Code Core, Interview Chamber)
+  [ ] Secret codes/fragments derived from play and shown in a notebook
+  [ ] Maze, riddles, secret passage, final code door all implemented
+  [ ] Dark multicolor design system applied consistently
+  [ ] Music + SFX + subtitles + volume/mute controls
+  [ ] Motion/VFX with reduced-motion alternative
+  [ ] Safe code execution (workers, timeout, no network)
+  [ ] Voice interview with typed fallback
+  [ ] Fair failure (Lockdown), never a dead end
+  [ ] Honest, useful performance report (share/download)
+  [ ] Tests green, Lighthouse targets met, deployed
+
+END OF SPECIFICATION
+================================================================================
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-11-09T21:12:34+05:30.
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.8 Flash (Medium). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
